@@ -2352,21 +2352,24 @@ bootRemote();
  */
 function detectApiUrl(){
   const el=$('#c_api'); if(!el) return;
+  // 1) 远程部署（有 SUPABASE_URL）→ 强制用云端 Edge Function，覆盖 localStorage 里的旧本地地址（避免上次手动填过 localhost 后被锁死）
+  if(typeof SUPABASE_URL==='string' && SUPABASE_URL.startsWith('http')){
+    el.value=SUPABASE_URL.replace(/\/+$/,'')+'/functions/v1/ai-extract';
+    el.placeholder='云端 Edge Function';
+    el.addEventListener('change',()=>{ localStorage.setItem('wb_trade_v3_api_url', el.value.trim()||''); });
+    return;
+  }
+  // 2) 本地或自托管 → localStorage 优先（用户可能故意指向局域网后端）
   const saved=localStorage.getItem('wb_trade_v3_api_url');
-  if(saved){ el.value=saved; el.placeholder='已记住'; return; }
-  try{
-    if(typeof SUPABASE_URL==='string' && SUPABASE_URL.startsWith('http')){
-      el.value=SUPABASE_URL.replace(/\/+$/,'')+'/functions/v1/ai-extract';
+  if(saved){ el.value=saved; el.placeholder='已记住'; }
+  else {
+    const o=window.location;
+    if(o.protocol==='file:' || o.hostname==='localhost' || o.hostname==='127.0.0.1'){
+      el.value='http://localhost:8787';
     } else {
-      const o=window.location;
-      if(o.protocol==='file:' || o.hostname==='localhost' || o.hostname==='127.0.0.1'){
-        el.value='http://localhost:8787';
-      } else {
-        el.value=o.protocol+'//'+o.hostname+':8787'; // 自托管 NAS：同域名换端口
-      }
+      el.value=o.protocol+'//'+o.hostname+':8787';
     }
-  }catch(e){ el.value='http://localhost:8787'; }
-  // 用户手动修改后记住
+  }
   el.addEventListener('change',()=>{ localStorage.setItem('wb_trade_v3_api_url', el.value.trim()||''); });
 }
 function setupAnnual(){
