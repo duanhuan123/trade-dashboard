@@ -920,9 +920,10 @@ function ensureBJRecords(){
 
 /* ---------- 启动远程加载 ---------- */
 async function bootRemote(){
-  loadUsers();
-  if(!dbAvailable()){ setSyncStatus(false); load(); ensureBJRecords(); restoreSession(); applyAuthUI(); return; }
+  if(!dbAvailable()){ setSyncStatus(false); loadUsers(); load(); ensureBJRecords(); restoreSession(); applyAuthUI(); return; }
   const hit=await dbLoad();
+  // 关键修复：先读云端，仅当云端未加载到账号时才回退默认（避免启动即把 admin888 写回云端覆盖真实密码）
+  if(!users.length){ loadUsers(); }
   // 云端账号行优先（若本地与云端不一致，以云端为准）
   if(_dbRows.users){ try{ localStorage.setItem(USERS_KEY, JSON.stringify(users)); }catch(e){} }
   restoreSession();
