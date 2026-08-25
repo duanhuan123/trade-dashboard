@@ -1,0 +1,2312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>宽东方贸易经营看板 · v3.2 (Supabase)</title>
+<style>
+  :root{
+    --bg:#f0f2f8; --card:#fff; --ink:#1a1f36; --sub:#5d6b82; --line:#e2e8f0;
+    --brand:#4f46e5; --brand-soft:#eef2ff; --brand-light:#f5f3ff;
+    --danger:#dc2626; --danger-soft:#fef2f2; --danger-line:#fecaca;
+    --ok:#059669; --ok-soft:#ecfdf5; --ok-line:#a7f3d0;
+    --warn:#d97706; --warn-soft:#fffbeb; --warn-line:#fde68a;
+    --purple:#7c3aed; --shadow-sm:0 1px 2px rgba(15,23,42,.04);
+    --shadow:0 1px 3px rgba(15,23,42,.06),0 8px 24px rgba(15,23,42,.04);
+    --shadow-lg:0 4px 16px rgba(15,23,42,.08),0 24px 48px rgba(15,23,42,.06);
+    --radius:16px; --radius-sm:10px; --radius-xs:8px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;font-size:15px;line-height:1.6;padding-bottom:calc(28px + env(safe-area-inset-bottom));-webkit-font-smoothing:antialiased}
+
+  /* ===== HEADER ===== */
+  header.top{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.85);backdrop-filter:saturate(200%) blur(20px);-webkit-backdrop-filter:saturate(200%) blur(20px);border-bottom:1px solid var(--line)}
+  .top-inner{max-width:1160px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#4f46e5,#7c3aed,#6366f1);display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:0 2px 8px rgba(79,70,229,.3)}
+  .title-block{flex:1 1 auto;min-width:180px}
+  .title-block h1{font-size:18px;margin:0;font-weight:800;letter-spacing:.5px;background:linear-gradient(135deg,var(--ink),#4f46e5);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .title-block p{margin:3px 0 0;font-size:12px;color:var(--sub);font-weight:500}
+
+  /* 操作按钮组 */
+  .top-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .sync-badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap;line-height:1.4}
+  .sync-badge.on{background:rgba(16,185,129,.18);color:#6ee7b7;border:1px solid rgba(16,185,129,.4)}
+  .sync-badge.off{background:rgba(245,158,11,.18);color:#fcd34d;border:1px solid rgba(245,158,11,.4)}
+  .btn{appearance:none;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:var(--radius-xs);padding:8px 14px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;min-height:40px;transition:all .18s ease;font-weight:600;letter-spacing:.2px}
+  .btn:hover{border-color:#cbd5e1;transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+  .btn:active{transform:none}
+  .btn.primary{background:linear-gradient(135deg,#4f46e5,#6366f1);border-color:transparent;color:#fff;box-shadow:0 2px 8px rgba(79,70,229,.25)}
+  .btn.primary:hover{box-shadow:0 4px 12px rgba(79,70,229,.35);transform:translateY(-1px)}
+  .btn.ghost{background:transparent;border-color:transparent;color:var(--sub)}
+  .btn.ghost:hover{background:var(--bg);color:var(--ink)}
+  .btn.danger{color:var(--danger);border-color:var(--danger-line);background:var(--danger-soft)}
+  .btn.danger:hover{background:#fee2e2}
+  .btn.ok{background:linear-gradient(135deg,#059669,#10b981);border-color:transparent;color:#fff;box-shadow:0 2px 8px rgba(5,150,105,.2)}
+  .btn.sm{padding:6px 10px;font-size:12px;min-height:34px}
+  .btn svg{width:15px;height:15px;flex:0 0 auto}
+
+  /* Tab 导航栏 —— 纯导航，不含录入 */
+  .top-tabs{display:flex;gap:0;padding:0 20px;max-width:1160px;margin:0 auto;overflow-x:auto;-webkit-overflow-scrolling:touch;border-bottom:1px solid rgba(226,232,240,.6)}
+  .top-tabs button{border:none;background:transparent;padding:12px 20px;font-size:14px;font-weight:600;color:var(--sub);cursor:pointer;position:relative;white-space:nowrap;min-height:46px;font-family:inherit;transition:all .2s;border-bottom:2px solid transparent}
+  .top-tabs button:hover{color:var(--ink);background:rgba(79,70,229,.03)}
+  .top-tabs button.on{color:var(--brand);font-weight:700;border-bottom-color:var(--brand);background:linear-gradient(to top,rgba(79,70,229,.04),transparent)}
+
+  /* ===== 录入入口（独立按钮风格） ===== */
+  .ingest-entry-btn{display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border:1px solid var(--ok-line);color:var(--ok);border-radius:20px;padding:7px 15px;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap;min-height:36px;font-family:inherit}
+  .ingest-entry-btn:hover{background:linear-gradient(135deg,#ecfdf5,#d1fae5);box-shadow:0 2px 8px rgba(5,150,105,.15);transform:translateY(-1px)}
+  .ingest-entry-btn.active{background:linear-gradient(135deg,#d1fae5,#a7f3d0);border-color:#6ee7b7;color:#047857;box-shadow:0 2px 10px rgba(5,150,105,.28)}
+  .ingest-entry-btn svg{width:14px;height:14px}
+
+  /* ===== 录入视图 ===== */
+  .ingest-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:linear-gradient(135deg,#f5f3ff,#ede9fe);border:1px solid #ddd6fe;border-radius:var(--radius);padding:14px 18px;margin-bottom:18px}
+  .ingest-bar label{font-weight:700;font-size:13px;color:var(--purple)}
+  .ingest-bar .seg{min-width:150px;padding:8px 12px;border:1px solid #c4b5fd;border-radius:var(--radius-xs);font-family:inherit;font-size:14px;background:#fff;font-weight:600}
+  .ingest-bar .ingest-hint{font-size:12px;color:var(--sub)}
+  .cmp-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--line);font-size:13px}
+  .cmp-row:first-of-type{border-top:none}
+  .cmp-row span{color:var(--sub)}
+  .cmp-row b{font-variant-numeric:tabular-nums}
+  .cmp-cta{margin-top:14px}
+
+  /* ===== 横幅 / 通知 ===== */
+  .banner{background:linear-gradient(135deg,var(--warn-soft),#fffbeb);border:1px solid var(--warn-line);color:#92400e;border-radius:var(--radius);padding:12px 16px;font-size:13px;margin:16px 0 0;display:flex;align-items:center;gap:10px;line-height:1.5}
+  .banner svg{width:16px;height:16px;flex:0 0 auto;color:var(--warn)}
+  section{margin-top:24px}
+  .wrap{max-width:1160px;margin:0 auto;padding:0 20px}
+
+  /* ===== Section 标题 ===== */
+  .sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+  .sec-head h2{font-size:17px;margin:0;font-weight:800;display:flex;align-items:center;gap:10px}
+  .sec-head h2 .bar{width:4px;height:20px;border-radius:4px;background:linear-gradient(180deg,#4f46e5,#7c3aed)}
+  .sec-head .meta{font-size:12px;color:var(--sub);font-weight:500}
+
+  /* ===== KPI 卡片（升级版） ===== */
+  .kpi-wrap{ /* #kpiGrid 外层：非 grid，仅包裹行标题+内层网格 */ }
+  .kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .kpi{background:linear-gradient(135deg,#fff, #fafbff);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;transition:all .2s}
+  .kpi:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+  .kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:4px 0 0 4px}
+  .kpi.blue::before{background:linear-gradient(180deg,#4f46e5,#6366f1)}
+  .kpi.red::before{background:linear-gradient(180deg,#dc2626,#ef4444)}
+  .kpi.green::before{background:linear-gradient(180deg,#059669,#10b981)}
+  .kpi.amber::before{background:linear-gradient(180deg,#d97706,#f59e0b)}
+  .kpi .k-label{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px;font-weight:600}
+  .kpi .k-val{font-size:24px;font-weight:800;margin-top:8px;letter-spacing:.3px;line-height:1.2}
+  .kpi .k-sub{font-size:11px;color:var(--sub);margin-top:5px;line-height:1.4}
+  .kpi.blue .k-val{color:#4338ca} .kpi.red .k-val{color:#dc2626} .kpi.green .k-val{color:#047857} .kpi.amber .k-val{color:#b45309}
+
+  /* ===== 图表区域 ===== */
+  .charts{display:grid;grid-template-columns:1.7fr 1fr;gap:16px;margin-top:18px}
+  .chart-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow-sm)}
+  .chart-card h3{margin:0 0 12px;font-size:13px;font-weight:700;color:var(--ink)}
+  .legend{display:flex;gap:16px;font-size:11px;color:var(--sub);margin-top:10px;flex-wrap:wrap}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+  /* ===== KPI 6 卡（3×2：年度目标对比 + 业务实际） ===== */
+  .kpi-wrap > .kpi-cap{font-size:12px;font-weight:700;color:var(--sub);margin:18px 0 10px;display:flex;align-items:center;gap:6px}
+  .kpi-wrap > .kpi-cap:first-child{margin-top:0}
+  .kpi-cap .dot{width:7px;height:7px;border-radius:50%;background:var(--brand)}
+  .kpi .k-bar{height:6px;background:#eef2f7;border-radius:4px;overflow:hidden;margin-top:10px}
+  .kpi .k-bar i{display:block;height:100%;background:var(--brand);border-radius:4px;transition:width .4s ease}
+  .kpi.amber .k-bar i{background:#f59e0b} .kpi.green .k-bar i{background:var(--ok)}
+  /* ===== 年度目标 ===== */
+  .annual-block{background:linear-gradient(180deg,#fff,#f8faff);border:1px solid #dbeafe;border-radius:var(--radius);padding:20px;margin-top:18px;box-shadow:var(--shadow-sm)}
+  .an-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+  .an-head h3{margin:0;font-size:15px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px}
+  .an-head h3 .bar{width:4px;height:16px;border-radius:3px;background:var(--brand);display:inline-block}
+  .an-sub{font-size:11px;font-weight:600;color:var(--sub)}
+  .an-ctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .an-ctrl label{font-weight:700;font-size:12px;color:var(--brand)}
+  .an-ctrl .seg{min-width:96px;padding:8px 10px;border:1px solid #c4b5fd;border-radius:var(--radius-xs);font-family:inherit;font-size:14px;background:#fff;font-weight:600}
+  .an-ctrl input[type=number]{width:140px;border:1.5px solid var(--line);border-radius:var(--radius-xs);padding:8px 10px;font-size:14px;font-weight:600;background:#fff}
+  .an-ctrl input[type=number]:focus{outline:none;border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.1)}
+  .btn.sm{padding:8px 14px;font-size:13px;min-height:38px}
+  .an-adv{background:#fff;border:1px dashed #c7d2fe;border-radius:var(--radius-sm);padding:14px;margin-bottom:16px}
+  .an-adv .note{font-size:12px;color:var(--sub);margin-bottom:8px} .an-adv .note code{background:#eef2ff;padding:1px 6px;border-radius:5px;font-size:11px}
+  .an-adv textarea{width:100%;min-height:78px;border:1.5px solid var(--line);border-radius:var(--radius-xs);padding:10px;font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}
+  .an-adv-row{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
+  .an-adv-row input[type=file]{font-size:12px;max-width:240px}
+  .an-body{display:flex;gap:24px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+  .an-ring-wrap{position:relative;width:130px;height:130px;flex:0 0 auto}
+  .an-ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}
+  .an-ring-center .rc-p{font-size:26px;font-weight:800;color:var(--ink);line-height:1}
+  .an-ring-center .rc-s{font-size:11px;color:var(--sub);margin-top:4px}
+  .an-stats{flex:1 1 260px;display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  .an-stats .as{background:#fff;border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px 14px}
+  .an-stats .as-l{font-size:11px;color:var(--sub);font-weight:600}
+  .an-stats .as-v{font-size:18px;font-weight:800;color:var(--ink);margin-top:3px;font-variant-numeric:tabular-nums}
+  .an-stats .as-v.pos{color:var(--ok)}
+  .an-charts{grid-template-columns:1.4fr 1fr;margin-top:0}
+  .an-company{max-height:340px;overflow:auto;padding-right:4px}
+  .an-company .empty{padding:20px}
+  /* ===== 优先级（催款） ===== */
+  .prio-card{border:1px solid var(--danger-line);background:linear-gradient(180deg,#fff,#fefcf9);border-radius:var(--radius);box-shadow:var(--shadow-sm);overflow:hidden}
+  .prio-item{display:flex;align-items:center;gap:14px;padding:16px 18px;border-top:1px solid #fef2f2}
+  .prio-item:first-child{border-top:none}
+  .prio-rank{width:28px;height:28px;border-radius:10px;background:linear-gradient(135deg,#fef2f2,#fee2e2);color:var(--danger);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .prio-main{flex:1 1 auto;min-width:0}
+  .prio-main .p1{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .prio-main .p2{font-size:12px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+
+  /* ===== 标签系统 ===== */
+  .tag{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;margin-left:6px;vertical-align:1px;line-height:1.4}
+  .tag.anom{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff} .tag.age{background:var(--warn-soft);color:var(--warn)}
+  .tag.warn{background:var(--warn-soft);color:var(--warn)}
+
+  .prio-amt{text-align:right;flex:0 0 auto}
+  .prio-amt .a1{font-weight:800;color:var(--danger);font-size:17px;font-variant-numeric:tabular-nums}
+  .prio-amt .a2{font-size:11px;color:var(--sub)}
+  .prio-done{border:1px solid var(--ok-line);color:var(--ok);background:var(--ok-soft);border-radius:var(--radius-xs);padding:10px 15px;font-size:13px;font-weight:700;cursor:pointer;min-height:42px;white-space:nowrap;transition:all .15s}
+  .prio-done:hover{background:#d1fae5}
+  .empty{padding:32px;text-align:center;color:var(--sub);font-size:14px}
+
+  /* ===== 本月业务进展 ===== */
+  .board-filter{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:linear-gradient(135deg,#eff6ff,#f5f3ff);border:1px solid #dbeafe;border-radius:var(--radius);padding:14px 18px;margin-bottom:18px}
+  .board-filter label{font-weight:700;font-size:13px;color:var(--brand)}
+  .board-filter .seg{min-width:150px;padding:8px 12px;border:1px solid #c4b5fd;border-radius:var(--radius-xs);font-family:inherit;font-size:14px;background:#fff;font-weight:600}
+  .prog-hint{font-size:12px;color:var(--sub)}
+  .board-filter .prog-cur{font-size:11px;font-weight:700;color:#fff;background:var(--ok);border-radius:20px;padding:2px 9px}
+  .prog-item{border:1px solid var(--line);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:12px;background:#fff;transition:all .15s}
+  .prog-item:hover{box-shadow:var(--shadow-sm);transform:translateY(-1px)}
+  .prog-item.follow{border-color:var(--warn-line);background:linear-gradient(180deg,#fff,#fffbeb)}
+  .prog-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .prog-co{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .prog-st{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;flex:0 0 auto}
+  .prog-st.st-done{background:var(--ok-soft);color:var(--ok);border:1px solid var(--ok-line)}
+  .prog-st.st-owed{background:var(--danger-soft);color:var(--danger);border:1px solid var(--danger-line)}
+  .prog-st.st-ing{background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn-line)}
+  .prog-mid{font-size:12px;color:var(--sub);margin-top:4px}
+  .prog-amts{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums}
+  .prog-amts .ok{color:var(--ok)} .prog-amts .pay{color:var(--purple)} .prog-amts .inv{color:var(--brand)}
+  .prog-flag{margin-top:10px;font-size:12px;font-weight:600;padding:6px 10px;border-radius:var(--radius-xs)}
+  .prog-flag.ok{background:var(--ok-soft);color:var(--ok)}
+  .prog-flag.follow{background:var(--warn-soft);color:var(--warn)}
+
+  /* ===== 对手方卡片 ===== */
+  .party-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+  .party-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow-sm);transition:all .2s}
+  .party-card:hover{box-shadow:var(--shadow)}
+  .party-card h3{margin:0 0 5px;font-size:14px;font-weight:700}
+  .party-card .hint{font-size:11px;color:var(--sub);margin-bottom:12px}
+  .bar-row{margin-bottom:12px}
+  .bar-row .bl{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
+  .bar-row .bl .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62%}
+  .bar-row .bl .vv{color:var(--sub);font-variant-numeric:tabular-nums}
+  .bar-track{height:8px;background:#f1f5f9;border-radius:6px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,#4f46e5,#7c3aed)}
+  .bar-fill.un{background:linear-gradient(90deg,#dc2626,#ef4444)}
+  /* ===== 台账工具栏 ===== */
+  .ledger-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .search{flex:1 1 220px;min-width:160px;position:relative}
+  .search input{width:100%;border:1.5px solid var(--line);border-radius:var(--radius-xs);padding:12px 14px 12px 40px;font-size:15px;min-height:46px;background:#fff;transition:border-color .2s}
+  .search input:focus{outline:none;border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.1)}
+  .search svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--sub)}
+  .seg{display:flex;background:#f1f5f9;border-radius:var(--radius-xs);padding:3px;gap:3px}
+  .seg button{border:none;background:transparent;border-radius:7px;padding:9px 14px;font-size:13px;font-weight:600;color:var(--sub);cursor:pointer;min-height:38px;transition:all .15s}
+  .seg button.on{background:#fff;color:var(--brand);box-shadow:var(--shadow-sm);font-weight:700}
+
+  /* ===== 分组 & 记录卡片 ===== */
+  .grp{margin-bottom:18px}
+  .grp-head{display:flex;align-items:center;gap:10px;margin:6px 0 12px}
+  .grp-head .m{font-weight:800;font-size:15px}
+  .grp-head .pill{font-size:11px;color:var(--sub);background:#f1f5f9;padding:4px 10px;border-radius:8px;font-weight:600}
+  .grp-head .right{margin-left:auto;font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums}
+
+  .rec{background:linear-gradient(135deg,#fff,#fafbff);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow-sm);margin-bottom:12px;transition:all .18s}
+  .rec:hover{border-color:#c7d2fe;box-shadow:var(--shadow)}
+  .rec .rc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .rec .rc-title{font-weight:700;font-size:14.5px}
+  .rec .rc-sub{font-size:12px;color:var(--sub);margin-top:3px}
+  .rec .ht-no{font-size:11px;color:#2563eb;background:#eff6ff;padding:2px 8px;border-radius:6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600}
+  .badge{display:inline-flex;align-items:center;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap;line-height:1.4}
+  .b-done{background:var(--ok-soft);color:var(--ok)} .b-owed{background:var(--danger-soft);color:var(--danger)} .b-doing{background:var(--warn-soft);color:var(--warn)} .b-todo{background:var(--brand-light);color:#4f46e5}
+  .seg-tag{font-size:11px;color:var(--sub);background:#f1f5f9;padding:3px 9px;border-radius:7px;margin-left:8px;font-weight:500}
+  .seg-tag.owner{color:#4338ca;background:#eef2ff;border:1px solid #c7d2fe}
+  .src-tag{font-size:10px;color:#4f46e5;background:var(--brand-soft);padding:2px 7px;border-radius:6px;margin-left:6px;font-weight:600}
+  .rc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 16px;margin-top:12px;font-size:13px}
+  .rc-grid .l{color:var(--sub);font-size:11px;font-weight:500}
+  .rc-grid .v{font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+  .neg{color:#dc2626} .pos{color:#059669}
+  .rc-ops{display:flex;gap:8px;margin-top:14px}
+  .rc-ops .btn{flex:1;justify-content:center}
+
+  /* ===== 校验徽章区 ===== */
+  .rc-check{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
+  .rc-check .tag{margin-left:0}
+
+  /* ===== 智能录入面板 ===== */
+  .tabs{display:flex;gap:4px;background:#f1f5f9;border-radius:var(--radius-xs);padding:4px;margin-bottom:16px;flex-wrap:wrap}
+  .tabs button{border:none;background:transparent;border-radius:8px;padding:11px 16px;font-size:13px;font-weight:700;color:var(--sub);cursor:pointer;flex:1 1 auto;min-height:44px;transition:all .15s}
+  .tabs button.on{background:#fff;color:var(--brand);box-shadow:var(--shadow-sm)}
+  .tabpane{display:none} .tabpane.on{display:block}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow-sm)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .fld{margin-bottom:14px}
+  .fld label{display:block;font-size:12px;color:var(--sub);margin-bottom:6px;font-weight:600;letter-spacing:.3px}
+  .fld input,.fld select,.fld textarea{width:100%;border:1.5px solid var(--line);border-radius:var(--radius-xs);padding:11px 13px;font-size:15px;min-height:46px;background:#fff;color:var(--ink);font-family:inherit;transition:border-color .2s}
+  .fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.08)}
+  .fld textarea{font-size:14px;min-height:68px;resize:vertical;line-height:1.55}
+  .checklist{background:linear-gradient(135deg,#fafbff,#fff);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin:16px 0}
+  .checklist h4{margin:0 0 12px;font-size:13px;font-weight:700}
+  .chk{display:flex;align-items:flex-start;gap:10px;padding:7px 0;font-size:13px}
+  .chk .ic{width:22px;height:22px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;margin-top:1px}
+  .chk .ic svg{width:12px;height:12px;display:block}
+  .chk.pass .ic{background:var(--ok-soft);color:var(--ok)} .chk.fail .ic{background:var(--danger-soft);color:var(--danger)} .chk.warn .ic{background:var(--warn-soft);color:var(--warn)}
+  .chk .tx{flex:1} .chk .tx b{font-weight:700}
+  .profit-prev{display:flex;gap:16px;flex-wrap:wrap;margin:8px 0 6px}
+  .profit-prev .pp{background:linear-gradient(135deg,var(--brand-light),#eef2ff);border-radius:12px;padding:12px 16px;flex:1 1 150px}
+  .profit-prev .pp .l{font-size:11px;color:var(--sub)} .profit-prev .pp .v{font-size:20px;font-weight:800;margin-top:3px}
+  .actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+  .actions .btn{flex:1;justify-content:center}
+  .file-drop{border:2px dashed #d4dce8;border-radius:var(--radius);padding:24px;text-align:center;color:var(--sub);font-size:13px;cursor:pointer;margin-bottom:14px;transition:all .2s;background:linear-gradient(135deg,#fafbff,#fff)}
+  .file-drop:hover{border-color:#a5b4fc;color:#4f46e5;background:linear-gradient(135deg,#f5f3ff,#ede9fe)}
+  .file-drop.drag{border-color:#4f46e5;background:linear-gradient(135deg,#eef2ff,#e0e7ff);color:#4f46e5}
+  .flow-adv{margin:4px 0 14px;font-size:12.5px;color:var(--sub)}
+  .flow-adv summary{cursor:pointer;user-select:none}
+  .flow-adv summary:hover{color:#4f46e5}
+  .flow-dir{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#f8fafc;border:1px solid var(--line);border-radius:var(--radius-xs);padding:10px 14px;margin-bottom:14px;font-size:13px}
+  .flow-dir-lbl{font-weight:700;color:var(--brand)}
+  .flow-dir label{display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+  .flow-dir input{width:15px;height:15px;accent-color:var(--brand)}
+  .row-item.unmatched{border-color:#fca5a5;background:#fff7f7}
+  .row-item.matched{border-color:#86efac;background:#f6fff9}
+  .row-item{border:1px solid var(--line);border-radius:var(--radius-xs);padding:14px;margin-bottom:10px;background:#fff;transition:all .15s}
+  .row-item:hover{box-shadow:var(--shadow-sm)}
+  .row-item .ri-top{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+  .row-item .ri-co{font-weight:700;font-size:14px}
+  .row-item .ri-amt{font-weight:800;font-variant-numeric:tabular-nums}
+  .row-item .ri-mid{font-size:12px;color:var(--sub);margin-top:4px}
+  .row-item select{margin-top:10px;width:100%;border:1.5px solid var(--line);border-radius:var(--radius-xs);padding:10px 12px;font-size:14px;min-height:44px;background:#fff}
+  .match-ok{color:var(--ok);font-size:12px;font-weight:700}
+  .match-no{color:var(--warn);font-size:12px;font-weight:700}
+  .match-warn{color:#d00;font-size:12px;font-weight:700;background:#fff0f0;padding:4px 8px;border-radius:4px;display:block}
+  .note{font-size:11.5px;color:var(--sub);margin-top:10px;line-height:1.6}
+
+  /* ===== 底部弹窗（Sheet） ===== */
+  .mask{position:fixed;inset:0;background:rgba(15,23,42,.4);z-index:50;display:none;align-items:end;justify-content:center}
+  .mask.show{display:flex}
+  .sheet{background:#fff;width:100%;max-width:580px;border-radius:20px 20px 0 0;max-height:92vh;overflow:auto;padding:20px 20px calc(24px + env(safe-area-inset-bottom));animation:up .25s cubic-bezier(.2,.9,.3,1)}
+  @keyframes up{from{transform:translateY(30px);opacity:.5}to{transform:none;opacity:1}}
+  .sheet h3{margin:0 0 16px;font-size:18px;display:flex;align-items:center;justify-content:space-between;font-weight:800}
+  .sheet .x{border:none;background:#f1f5f9;border-radius:10px;width:34px;height:34px;font-size:18px;cursor:pointer;color:var(--sub);transition:background .15s}
+  .sheet .x:hover{background:#e2e8f0}
+  .sheet-actions{display:flex;gap:10px;margin-top:10px;position:sticky;bottom:0;background:#fff;padding-top:12px}
+  .sheet-actions .btn{flex:1;justify-content:center}
+
+  /* ===== 登录 / 账号管理 ===== */
+  .login-sheet{max-width:420px;border-radius:20px;padding:28px 26px 22px;text-align:center}
+  .login-logo{width:58px;height:58px;border-radius:18px;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;box-shadow:0 8px 24px rgba(79,70,229,.28)}
+  .login-sheet h3{border:none;margin:0 0 4px}
+  .login-sub{color:var(--sub);font-size:12.5px;margin:0 0 18px}
+  .login-sheet .fld{text-align:left;margin-bottom:12px}
+  .login-err{color:var(--danger);font-size:12.5px;min-height:18px;margin-bottom:6px;text-align:left}
+  .login-tip{margin-top:14px;font-size:11.5px;color:var(--sub);border-top:1px dashed var(--line);padding-top:12px}
+  .acct-sheet{max-width:680px}
+  .acct-add-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .acct-add-row input{flex:1 1 130px;min-width:120px;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:13px;font-family:inherit;background:#fff}
+  .acct-add-row .btn{flex:0 0 auto}
+  .acct-list{display:flex;flex-direction:column;gap:10px}
+  .acct-item{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff}
+  .acct-item .ai-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .acct-item .ai-name{font-weight:800;font-size:14px}
+  .acct-item .ai-user{color:var(--sub);font-size:12px}
+  .acct-item .ai-role{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;flex:0 0 auto}
+  .ai-role.admin{background:linear-gradient(135deg,#eef2ff,#e0e7ff);color:#4338ca;border:1px solid #c7d2fe}
+  .ai-role.member{background:var(--ok-soft);color:var(--ok);border:1px solid var(--ok-line)}
+  .acct-item .ai-scope{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .acct-item .ai-scope .sc-tag{font-size:11.5px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:3px 9px;color:var(--ink)}
+  .acct-item .ai-scope .sc-tag.reg{background:#fff7ed;border-color:#fed7aa;color:#9a3412}
+  .acct-item .ai-actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+  .acct-item .ai-actions .btn{flex:0 0 auto;font-size:12px;min-height:32px;padding:0 12px}
+  .acct-item .ai-edit{margin-top:10px;border-top:1px dashed var(--line);padding-top:10px;display:none}
+  .acct-item .ai-edit.on{display:block}
+  .acct-item .ai-edit .lbl{font-size:12px;font-weight:700;color:var(--sub);margin:6px 0 4px}
+  .acct-item .ai-edit .cmp-chk{display:flex;flex-wrap:wrap;gap:6px}
+  .acct-item .ai-edit .cmp-chk label{font-size:12px;display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:8px;padding:4px 9px;cursor:pointer;background:#fff}
+  .acct-item .ai-edit .cmp-chk label.checked{background:#eef2ff;border-color:#a5b4fc}
+  .acct-item .ai-edit .cmp-chk input{accent-color:#4f46e5}
+  .acct-item .ai-edit .reg-chk{display:flex;gap:14px;margin-bottom:6px}
+  .acct-item .ai-edit .reg-chk label{font-size:13px;display:flex;align-items:center;gap:5px;cursor:pointer}
+  .acct-item .ai-edit .reg-chk input{accent-color:#4f46e5}
+
+  /* ===== 目标管理页 ===== */
+  .target-sheet{max-width:960px}
+  .target-sheet h3{border:none}
+  .target-sheet .note{font-size:12.5px;line-height:1.7}
+  .target-sheet .note code{background:#eef2ff;padding:1px 6px;border-radius:5px;font-size:11.5px}
+  .tgt-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0 12px;padding:10px 12px;background:var(--bg);border-radius:10px}
+  .tgt-toolbar label{font-size:12px;font-weight:700;color:var(--sub)}
+  .tgt-toolbar .seg{min-width:96px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;font-family:inherit;font-size:13px}
+  .tgt-toolbar #tgtLegacyVal{background:#fff7ed;border-color:#fed7aa;color:#9a3412;min-width:120px}
+  .tgt-wrap{overflow-x:auto;max-height:62vh;border:1px solid var(--line);border-radius:10px}
+  .tgt-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px;background:#fff}
+  .tgt-table th,.tgt-table td{padding:6px 6px;text-align:center;border-bottom:1px solid var(--line);border-right:1px solid var(--line);white-space:nowrap}
+  .tgt-table th{background:var(--bg);font-weight:700;color:var(--sub);position:sticky;top:0;z-index:1}
+  .tgt-table th.tco,.tgt-table td.tco{text-align:left;background:#fafbff;font-weight:700;color:var(--ink);min-width:160px;position:sticky;left:0;z-index:2}
+  .tgt-table th.tco{background:var(--bg);z-index:3}
+  .tgt-table td input{width:84px;border:1px solid transparent;background:transparent;padding:5px 6px;font-size:12.5px;font-family:inherit;text-align:right;border-radius:6px;color:var(--ink);font-variant-numeric:tabular-nums}
+  .tgt-table td input:focus{outline:none;border-color:#a5b4fc;background:#eef2ff}
+  .tgt-table td input:disabled{color:var(--sub);background:transparent;cursor:not-allowed}
+  .tgt-table td.tall{background:var(--bg);font-weight:800;color:var(--ink);text-align:right;min-width:96px}
+  .tgt-table td.tact{padding:4px 6px;min-width:90px}
+  .tgt-table td.tact .btn{font-size:11.5px;min-height:28px;padding:0 9px;flex:0 0 auto}
+  .tgt-table tr.legacy td.tco{color:#9a3412;background:#fff7ed}
+  .tgt-table tfoot td{background:linear-gradient(180deg,#eef2ff,#e0e7ff);font-weight:800;color:#3730a3;font-variant-numeric:tabular-nums;position:sticky;bottom:0}
+  .tgt-table tfoot td.tco{color:#3730a3}
+  .tgt-table .reg{color:#9a3412;font-size:11px;font-weight:600;background:#fff7ed;padding:1px 6px;border-radius:6px;margin-left:6px}
+
+  /* ===== Toast ===== */
+  .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1a1f36;color:#fff;padding:12px 20px;border-radius:14px;font-size:14px;z-index:80;opacity:0;pointer-events:none;transition:.25s;max-width:88%;font-weight:500;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+  .toast.show{opacity:1}
+  /* ===== 附件系统 ===== */
+  .file-hint{font-size:12.5px;color:var(--ink);background:linear-gradient(135deg,#f5f3ff,#ede9fe);border:1px solid #ddd6fe;border-radius:var(--radius-xs);padding:9px 12px;margin:10px 0 3px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .file-hint .fh-ic{color:#7c3aed;display:inline-flex}
+  .file-hint .fh-x{margin-left:auto;border:1px solid var(--line);background:#fff;color:var(--danger);border-radius:8px;padding:5px 11px;cursor:pointer;font-size:12px;min-height:34px;font-weight:600;transition:background .15s}
+  .file-hint .fh-x:active{background:#fef2f2}
+  .att-section{border-top:1.5px dashed var(--line);margin-top:14px;padding-top:14px}
+  .att-empty{font-size:12.5px;color:var(--sub);padding:7px 0}
+  .att-list{display:flex;flex-direction:column;gap:9px;margin-top:9px}
+  .att-chip{display:flex;align-items:center;gap:9px;background:linear-gradient(135deg,#fafbff,#f5f3ff);border:1px solid var(--line);border-radius:var(--radius-xs);padding:10px 12px;font-size:13px;transition:all .15s}
+  .att-chip:hover{box-shadow:var(--shadow-sm)}
+  .att-chip .att-ic{color:#7c3aed;display:inline-flex;flex:0 0 auto}
+  .att-chip .att-name{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .att-chip .att-sz{color:var(--sub);font-size:12px;flex:0 0 auto}
+  .att-chip .att-v,.att-chip .att-d{border:1px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;font-size:12px;min-height:36px;padding:0 13px;font-weight:600;transition:all .15s}
+  .att-chip .att-d{color:var(--danger);flex:0 0 auto;padding:0 13px}
+  .att-chip .att-v:active,.att-chip .att-d:active{background:var(--brand-light)}
+  .att-add{display:inline-flex;align-items:center;gap:6px;margin-top:12px;border:1.5px dashed #a5b4fc;color:#4f46e5;background:linear-gradient(135deg,#f5f3ff,#ede9fe);border-radius:var(--radius-xs);padding:10px 16px;cursor:pointer;font-size:13px;font-weight:700;min-height:46px;transition:all .15s}
+  .att-add:active{background:#ede9fe}
+  .att-btn{display:inline-flex;align-items:center;gap:5px}
+  .att-btn .att-ic{color:#7c3aed;display:inline-flex}
+  .overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:90;display:flex;align-items:center;justify-content:center;padding:16px}
+  .att-card{background:#fff;border-radius:18px;width:min(700px,96vw);max-height:92vh;overflow:auto;padding:20px;box-shadow:var(--shadow-lg)}
+  .att-head{display:flex;align-items:center;justify-content:space-between;font-weight:800;font-size:17px;margin-bottom:12px}
+  .att-head .x{border:none;background:transparent;font-size:26px;line-height:1;color:var(--sub);cursor:pointer;width:42px;height:42px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background .15s}
+  .att-head .x:hover{background:#f1f5f9}
+  .att-view{margin-top:14px;border-top:1.5px solid var(--line);padding-top:14px;min-height:80px}
+  @media (max-width:768px){ .att-chip .att-name{max-width:42vw} }
+
+  /* ===== IMA 同步状态 ===== */
+  .sync-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;flex:0 0 auto;line-height:1.4}
+  .sync-badge.ok{background:var(--ok-soft);color:var(--ok)}
+  .sync-badge.ok.ima{background:linear-gradient(135deg,#eef2ff,#e0e7ff);color:#4338ca;border:1px solid #c7d2fe}
+  .sync-badge.wait{background:var(--warn-soft);color:var(--warn)}
+  .att-sz.ima{color:#4338ca;font-weight:600}
+  .att-ima-only{display:flex;flex-direction:column;align-items:center;gap:10px;padding:32px 18px;text-align:center;color:var(--sub)}
+  .att-ima-t{font-size:16px;font-weight:600;color:var(--ink)}
+  .att-ima-p{font-size:13px;color:#4338ca;word-break:break-all;padding:0 10px;line-height:1.6}
+  .att-ima-h{font-size:12px;color:var(--sub);max-width:360px;line-height:1.65}
+  .att-ima-acts{margin:8px 0 4px}
+  .att-ima-acts .btn{padding:9px 20px;font-size:13px}
+  .sync-summary{font-size:12px;color:var(--sub);margin-top:10px;display:flex;gap:14px;flex-wrap:wrap}
+  .sync-summary b{font-variant-numeric:tabular-nums}
+
+  /* ===== 数据健康 & 待办 ===== */
+  .kpi-health{margin-top:14px}
+  .dh{display:inline-flex;align-items:center;gap:5px;padding:8px 15px;border-radius:10px;background:var(--ok-soft);color:var(--ok);font-weight:600;font-size:12.5px;line-height:1.4}
+  .dh.bad{background:var(--danger-soft);color:var(--danger)}
+  .dh svg{width:14px;height:14px;flex-shrink:0}
+
+  .todo-card{background:linear-gradient(135deg,#fff,#fafbff);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:8px 18px}
+  .todo-item{display:flex;align-items:center;gap:12px;padding:13px 0;border-top:1px solid var(--line)}
+  .todo-item:first-child{border-top:none}
+  .todo-ic{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .todo-item.err .todo-ic{background:var(--danger)} .todo-item.warn .todo-ic{background:var(--warn)} .todo-item.sync .todo-ic{background:#4f46e5}
+  .todo-tx{flex:1 1 auto;font-size:13.5px;min-width:0;line-height:1.45}
+  .todo-go{border:1.5px solid #c7d2fe;color:#4f46e5;background:#fff;border-radius:9px;padding:8px 15px;font-size:13px;font-weight:700;cursor:pointer;min-height:40px;white-space:nowrap;transition:all .15s}
+  .todo-go:hover{background:var(--brand-light)}
+
+  /* ===== 移动端适配 ===== */
+  @media (max-width:768px){
+    .kpi-grid{grid-template-columns:repeat(2,1fr);gap:12px}
+    .kpi .k-val{font-size:20px}
+    .rc-grid{grid-template-columns:repeat(2,1fr)}
+    .charts{grid-template-columns:1fr}
+    .top-inner{padding:10px 14px;gap:10px}
+    .title-block h1{font-size:16px}
+    .logo{width:36px;height:36px}
+    .party-grid{grid-template-columns:1fr}
+    .grid2{grid-template-columns:1fr}
+    body{font-size:14px}
+    .sec-head h2{font-size:15px}
+    .charts,.chart-card{padding:14px}
+    .kpi{padding:16px}
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <div class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8"/></svg></div>
+    <div class="title-block"><h1>宽东方贸易经营看板 · v3</h1><p id="subtitle">多板块贸易经营 | 合同审核 · 流水匹配 · 发票核对</p></div>
+    <div class="top-actions">
+      <button class="ingest-entry-btn" id="btnGoIngest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>录入中心</button>
+      <button class="btn ghost" id="btnExport" title="导出 JSON 备份"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>导出</button>
+      <button class="btn ghost" id="btnImport" title="导入恢复"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 9l5-5 5 5M12 4v12"/></svg>导入</button>
+      <button class="btn ghost" id="btnExportCsv" title="导出当前筛选结果为 CSV（Excel 可直接打开）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>CSV</button>
+      <button class="btn ghost" id="btnExportShared" title="按板块导出共享视图，只含选中板块"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>共享</button>
+      <input type="file" id="fileInput" accept="application/json" style="display:none">
+      <button class="btn ghost" id="btnTarget" title="年度目标管理（按公司×月份）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>目标</button>
+      <button class="btn ghost" id="btnAccount" title="账号与数据权限"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg><span id="accountLabel">登录</span></button>
+      <span id="syncBadge" class="sync-badge on">NAS 已同步</span>
+    </div>
+  </div>
+  <nav class="top-tabs" id="topTabs"></nav>
+</header>
+<div class="wrap">
+  <div id="backupBanner" class="banner" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span id="backupBannerText"></span></div>
+
+  <section id="secOverview"><div class="sec-head"><h2><span class="bar"></span>经营看板</h2><span class="meta" id="ovMeta"></span></div>
+    <div class="board-filter"><label>月度筛选</label><select id="ovMonth" class="seg"></select><span id="ovCurTag" class="prog-cur" style="display:none">当前月</span><span id="ovMonthHint" class="prog-hint"></span></div>
+    <div class="kpi-wrap" id="kpiGrid"></div>
+    <div class="kpi-health" id="kpiHealth"></div>
+    <div class="annual-block" id="anBlock">
+      <div class="an-head"><h3><span class="bar"></span>年度目标 · <span id="anYearLabel">2026</span><span class="an-sub">（各公司目标合计 = 全年总目标）</span></h3>
+        <div class="an-ctrl">
+          <label>年份</label><select id="anYear" class="seg"></select>
+          <button class="btn primary sm" id="anOpenMgr">🎯 目标管理</button>
+        </div>
+      </div>
+      <div class="an-body">
+        <div class="an-ring-wrap"><div id="anRing"></div><div class="an-ring-center" id="anRingCenter"></div></div>
+        <div class="an-stats" id="anStats"></div>
+      </div>
+      <div class="charts an-charts">
+        <div class="chart-card"><h3>月度目标 vs 实际（销售额）</h3><div id="anMonthChart"></div><div class="legend"><span><i style="background:#fab005"></i>月度目标</span><span><i style="background:#3b5bdb"></i>实际销售额</span></div></div>
+        <div class="chart-card"><h3>各公司年度业绩排行（上游应收）</h3><div id="anCompany" class="an-company"></div></div>
+      </div>
+    </div>
+    <div class="charts" id="progExtra" style="grid-template-columns:1fr 1fr;display:none"><div class="chart-card"><h3 id="progListTitle">本月进展明细</h3><div id="progList"></div></div>
+      <div class="chart-card"><h3>跟进提示（待结清 / 异常）</h3><div id="progFollow"></div></div></div>
+  </section>
+
+  <section id="secCompare"><div class="sec-head"><h2><span class="bar"></span>板块对比</h2><span class="meta">一眼看全局 · 点板块进入详情</span></div>
+    <div class="party-grid" id="compareGrid"></div></section>
+
+  <section id="secDataTodo" style="display:none"><div class="sec-head"><h2><span class="bar"></span>数据待办 · 需要核对</h2><span class="meta">异常 / 亏损 / 缺字段 / 未同步归档</span></div>
+    <div class="todo-card" id="dataTodoBody"></div></section>
+
+  <section id="secPrio" style="display:none"><div class="sec-head"><h2><span class="bar"></span>今天待处理 · 催款优先级</h2><span class="meta" id="prioMeta"></span></div><div class="prio-card" id="prioCard"></div></section>
+
+  <section id="secParty" style="display:none"><div class="sec-head"><h2><span class="bar"></span>对手方分析</h2><span class="meta">往来规模最大的上下游公司</span></div>
+    <div class="party-grid"><div class="party-card"><h3>上游公司（销售对象 · 我应收）</h3><div class="hint">按应收规模排序，红色为待收余额</div><div id="partyUp"></div></div>
+      <div class="party-card"><h3>下游公司（采购对象 · 我应付）</h3><div class="hint">按应付规模排序，红色为待付余额</div><div id="partyDown"></div></div></div>
+  </section>
+
+  <section id="secIngest" style="display:none"><div class="sec-head"><h2><span class="bar"></span>智能录入中心</h2><span class="meta">合同审核 · 流水匹配 · 发票核对 · 快速记一笔</span></div>
+    <div class="ingest-bar"><label>目标板块</label><select id="ingestBlock" class="seg"></select><span class="ingest-hint">上传文件后将自动匹配公司并预填，你只需补金额 / 月份</span></div>
+    <div class="tabs" id="ingestTabs">
+      <button data-t="contract" class="on">① 合同审核</button>
+      <button data-t="flow">② 银行流水</button>
+      <button data-t="invoice">③ 发票核对</button>
+      <button data-t="quick">④ 快速记一笔</button>
+    </div>
+    <!-- 合同 -->
+    <div class="tabpane on" id="pane-contract"><div class="panel">
+      <div class="file-drop" id="contractDrop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:26px;height:26px;margin-bottom:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><br>点击或拖入合同文件（PDF / Word / txt）<br><span style="font-size:11px">已接入 AI 抽取：选中合同即自动抽取并回填字段；后端未运行时请手动录入（双击 run_server.bat 开启）</span>
+        <input type="file" id="contractFile" accept=".pdf,.docx,.txt,.md,.csv,.png,.jpg,.jpeg" style="display:none"></div>
+      <div id="cFileHint" class="file-hint"></div>
+      <div class="fld"><label>AI 后端地址（运行 extract_server.py 后，选合同即自动抽取；留空则手动录入）</label><input id="c_api" value="" placeholder="自动检测中…"></div>
+      <div id="aiStatus" class="note"></div>
+      <div class="grid2">
+        <div class="fld"><label>归属公司（我方主体）</label><select id="c_归属公司" class="seg"></select></div>
+        <div class="fld"><label>板块（可选/可输入新公司）</label><input id="c_板块" list="blockList" placeholder="选择或输入新板块，如：智造深圳"></div>
+      </div>
+      <div class="grid2">
+        <div class="fld"><label>合同编号（选填，留空自动生成）</label><input id="c_合同编号" placeholder="HT202603001"></div>
+        <div class="fld"><label>合同月份</label><input id="c_月份" type="month"></div>
+      </div>
+      <div class="fld"><label>账期 / 付款节点</label><input id="c_账期" placeholder="如：货到30天 / 2026-09"></div>
+      <div class="grid2">
+        <div class="fld"><label>上游公司（销售对象 / 我应收）</label><input id="c_上游公司" placeholder="客户名称"></div>
+        <div class="fld"><label>下游公司（采购对象 / 我应付）</label><input id="c_下游公司" placeholder="供应商名称"></div>
+      </div>
+      <div class="grid2">
+        <div class="fld"><label>上游应收金额（收入）</label><input id="c_上游应收金额" type="number" inputmode="decimal" placeholder="0"></div>
+        <div class="fld"><label>下游应付金额（成本）</label><input id="c_下游应付金额" type="number" inputmode="decimal" placeholder="0"></div>
+      </div>
+      <div class="grid2">
+        <div class="fld"><label>流量费</label><input id="c_流量费" type="number" inputmode="decimal" placeholder="智造板块自动计算"></div>
+        <div class="fld"><label>税金</label><input id="c_税金" type="number" inputmode="decimal" placeholder="0"></div>
+      </div>
+      <div class="fld"><label>开票条款</label><textarea id="c_开票条款" placeholder="如：增值税专用发票，票到付款 / 先款后票"></textarea></div>
+      <div class="profit-prev">
+        <div class="pp"><div class="l">预估毛利</div><div class="v" id="cProfit">—</div></div>
+        <div class="pp"><div class="l">毛利率</div><div class="v" id="cMargin">—</div></div>
+      </div>
+      <div class="checklist"><h4>合同审核清单</h4><div id="chkList"></div></div>
+      <div class="actions">
+        <button class="btn ok" id="cRecord">审核通过，入台账</button>
+        <button class="btn ghost" id="cSkip">暂不记录</button>
+      </div>
+      <div class="note">入台账后，系统按「收入 − 成本 − 流量费(6‰) − 税金」计算毛利，并以「欠款」状态进入催款队列；后续用银行流水/发票核对时自动冲减已走金额。</div>
+    </div></div>
+    <!-- 流水 -->
+    <div class="tabpane" id="pane-flow"><div class="panel">
+      <div class="file-drop" id="flowDrop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:26px;height:26px;margin-bottom:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><br>点击或拖入银行流水表（.xlsx / .xls / .csv / .txt）<br><span style="font-size:11px">自动识别列（日期 / 对方户名 / 金额 / 收付款方向）；也可粘贴文本兜底</span>
+        <input type="file" id="flowFile" accept=".xlsx,.xls,.csv,.txt,.json" style="display:none"></div>
+      <div id="flowFileInfo" class="note" style="margin:0 0 12px;display:none"></div>
+      <div id="flowColMap" style="display:none"></div>
+      <details class="flow-adv"><summary>或粘贴文本（CSV / 制表符 / 逗号分隔）</summary>
+        <div class="fld" style="margin-top:12px"><label>粘贴银行流水</label>
+          <textarea id="flowPaste" placeholder="每行一笔，建议列：日期, 对方户名, 金额, 方向(收/付)&#10;例：&#10;2026-07-03, 深圳市迪威数据科技有限公司, 6840000, 收&#10;2026-07-05, 全民点游科技有限公司, 4983228.25, 付"></textarea></div>
+        <div class="actions" style="margin-top:0"><button class="btn ghost" id="flowClear">清空</button></div>
+      </details>
+      <div class="flow-dir" id="flowDirToggle" style="display:none">
+        <span class="flow-dir-lbl">方向判定：</span>
+        <label><input type="radio" name="flowdir" value="auto" checked>自动</label>
+        <label><input type="radio" name="flowdir" value="bank">按借贷(借=付/贷=收)</label>
+        <label><input type="radio" name="flowdir" value="sign">按金额正负</label>
+      </div>
+      <div class="actions"><button class="btn primary" id="flowParse">解析并匹配</button></div>
+      <div id="flowResult" style="margin-top:14px"></div>
+      <div class="note">「收」= 对方打款给我们 → 冲减上游已走；「付」= 我们付给对方 → 冲减下游已走。公司名按包含关系模糊匹配；未匹配的可手动指定台账记录。</div>
+    </div></div>
+    <!-- 发票 -->
+    <div class="tabpane" id="pane-invoice"><div class="panel">
+      <div class="file-drop" id="invoiceDrop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:26px;height:26px;margin-bottom:4px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><br>点击或拖入发票文件（PDF / Word / txt）<br><span style="font-size:11px">已接入 AI 抽取：选中发票即自动抽取并回填；后端未运行时请手动录入</span>
+        <input type="file" id="invoiceFile" accept=".pdf,.docx,.txt,.md,.csv,.png,.jpg,.jpeg" style="display:none"></div>
+      <div id="aiStatusInv" class="note"></div>
+      <div class="grid2">
+        <div class="fld"><label>发票类型</label><select id="i_类型"><option>销售发票（我开给下游）</option><option>采购发票（上游开给我）</option></select></div>
+        <div class="fld"><label>发票金额</label><input id="i_金额" type="number" inputmode="decimal" placeholder="0"></div>
+      </div>
+      <div class="grid2">
+        <div class="fld"><label>销售方</label><input id="i_销售方" placeholder="开票方"></div>
+        <div class="fld"><label>购买方</label><input id="i_购买方" placeholder="受票方"></div>
+      </div>
+      <div class="grid2">
+        <div class="fld"><label>发票号码</label><input id="i_发票号" placeholder="选填"></div>
+        <div class="fld"><label>开票日期</label><input id="i_日期" type="month"></div>
+      </div>
+      <div class="actions" style="margin-top:0"><button class="btn primary" id="iMatch">匹配台账</button>
+        <button class="btn ghost" id="iClear">清空</button></div>
+      <div id="invoiceResult" style="margin-top:14px"></div>
+      <div class="note">销售发票匹配「下游公司 + 金额」→ 写入下游开票金额；采购发票匹配「上游公司 + 金额」→ 写入上游开票金额。用于核对开票进度。</div>
+    </div></div>
+    <!-- 快速记一笔 -->
+    <div class="tabpane" id="pane-quick"><div class="panel" style="text-align:center;padding:40px 24px">
+      <div style="width:64px;height:64px;border-radius:20px;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;box-shadow:0 8px 24px rgba(79,70,229,.25)"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+      <h3 style="margin:0 0 8px;font-size:18px">快速记一笔贸易</h3>
+      <p style="color:var(--sub);font-size:13.5px;max-width:440px;margin:0 auto 22px;line-height:1.6">适用于已知全部金额（应收 / 已走 / 应付 / 已走 / 开票 / 税金等）的直接录入，或补充、修改已有记录。点击下方按钮打开完整表单。</p>
+      <button class="btn primary" id="quickAddBtn" style="padding:14px 30px;font-size:15px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>＋ 记一笔贸易</button>
+      <div class="note" style="margin-top:18px;max-width:500px;margin-left:auto;margin-right:auto">① 合同审核适合「从合同文件出发」；② 银行流水适合「批量冲减已走金额」；③ 发票核对适合「登记开票进度」；④ 快速记一笔适合「直接填全部数字」。</div>
+    </div></div>
+  </section>
+
+  <section id="secLedger" style="display:none"><div class="sec-head"><h2><span class="bar"></span>贸易台账</h2>
+      <div class="seg" id="segFilter" style="display:none"></div></div>
+    <div class="ledger-tools"><div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input id="searchInput" type="text" placeholder="搜索公司 / 月份 / 状态 / 来源"></div>
+      <div class="seg" id="segStatus"><button data-s="all" class="on">全部状态</button><button data-s="欠款">仅欠款</button><button data-s="已完成">已完成</button></div></div>
+    <div id="ledgerGroups"></div>
+  </section>
+</div>
+
+<div class="mask" id="mask"><div class="sheet">
+  <h3><span id="sheetTitle">记一笔贸易</span><button class="x" id="sheetClose">×</button></h3>
+  <div class="grid2"><div class="fld"><label>归属公司（我方主体 · 决定数据归属）</label><select id="f_归属公司" class="seg"></select></div><div class="fld"><label>地区</label><input id="f_地区" type="text" disabled placeholder="随归属公司自动带出"></div></div>
+  <div class="grid2"><div class="fld"><label>板块（可选/可输入新公司）</label><input id="f_板块" list="blockList" placeholder="选择或输入新板块"></div><div class="fld"><label>合同编号（选填）</label><input id="f_合同编号" placeholder="HT202603001"></div></div>
+  <div class="grid2"><div class="fld"><label>月份</label><input id="f_月份" type="month"></div><div class="fld"><label>交易情况</label><select id="f_交易情况"><option>已完成</option><option>欠款</option><option>进行中</option><option>未启动</option></select></div></div>
+  <div class="grid2"><div class="fld"><label>上游公司（销售对象）</label><input id="f_上游公司" type="text" placeholder="客户名称"></div><div class="fld"><label>下游公司（采购对象）</label><input id="f_下游公司" type="text" placeholder="供应商名称"></div></div>
+  <div class="grid2"><div class="fld"><label>上游应收金额（收入）</label><input id="f_上游应收金额" type="number" inputmode="decimal" placeholder="0"></div><div class="fld"><label>上游已走金额（已收）</label><input id="f_上游已走金额" type="number" inputmode="decimal" placeholder="0"></div></div>
+  <div class="grid2"><div class="fld"><label>下游应付金额（成本）</label><input id="f_下游应付金额" type="number" inputmode="decimal" placeholder="0"></div><div class="fld"><label>下游已走金额（已付）</label><input id="f_下游已走金额" type="number" inputmode="decimal" placeholder="0"></div></div>
+  <div class="grid2"><div class="fld"><label>上游开票金额</label><input id="f_上游开票金额" type="number" inputmode="decimal" placeholder="0"></div><div class="fld"><label>下游开票金额</label><input id="f_下游开票金额" type="number" inputmode="decimal" placeholder="0"></div></div>
+  <div class="grid2"><div class="fld"><label>税金</label><input id="f_税金" type="number" inputmode="decimal" placeholder="0"></div><div class="fld"><label>流量费</label><input id="f_流量费" type="number" inputmode="decimal" placeholder="智造板块自动计算"></div></div>
+  <div class="fld"><label>备注</label><input id="f_备注" type="text" placeholder="选填"></div>
+  <div class="att-section"><label style="font-weight:700;font-size:13px">合同 / 发票等附件（随记录保存，可多份）</label>
+    <div id="attList" class="att-list"></div>
+    <label class="att-add">＋ 添加附件<input type="file" id="f_att" accept=".pdf,.docx,.txt,.md,.csv,image/*" multiple style="display:none"></label>
+    <div class="att-empty" style="margin-top:4px">提示：图片会自动压缩到 800px 宽；单文件超过 10MB 会被跳过；合同 PDF 等建议定期导出备份（本地存储约 5MB 上限）。</div>
+    <div id="syncSummary" class="sync-summary"></div>
+  </div>
+  <div class="sheet-actions"><button class="btn danger" id="btnDelete" style="display:none;flex:0 0 auto;padding:0 18px">删除</button><button class="btn ghost" id="btnSplit" style="flex:0 0 auto;padding:0 14px">拆分为多笔</button><button class="btn ghost" id="btnCancel">取消</button><button class="btn primary" id="btnSave">保存</button></div>
+</div></div>
+<div class="mask" id="shareMask"><div class="sheet">
+  <h3><span>导出共享视图</span><button class="x" id="shareClose">×</button></h3>
+  <div class="note">勾选要包含进共享文件的业务板块。对方导入后只能看到这些板块的数据（数据隔离，不含其他板块），且不会删除对方本地已有记录。</div>
+  <div id="shareBlocks"></div>
+  <div class="sheet-actions"><button class="btn ghost" id="shareCancel">取消</button><button class="btn primary" id="shareOk">导出选中板块</button></div>
+</div></div>
+<div class="toast" id="toast"></div>
+<datalist id="blockList"></datalist>
+
+<!-- 登录遮罩 -->
+<div class="mask" id="loginMask"><div class="sheet login-sheet">
+  <div class="login-logo"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8"/></svg></div>
+  <h3 style="justify-content:center;border:none">宽东方贸易经营看板</h3>
+  <p class="login-sub">登录后按账号权限查看对应公司 / 地区数据</p>
+  <div class="fld"><label>账号</label><input id="loginUser" type="text" placeholder="请输入账号" autocomplete="username"></div>
+  <div class="fld"><label>密码</label><input id="loginPwd" type="password" placeholder="请输入密码" autocomplete="current-password"></div>
+  <div class="login-err" id="loginErr"></div>
+  <div class="sheet-actions" style="margin-top:6px"><button class="btn primary" id="loginOk">登 录</button></div>
+  <div class="login-tip">初始管理员账号 <b>admin</b> / 密码 <b>admin888</b>（登录后请在账号管理里修改）</div>
+</div></div>
+
+<!-- 账号管理遮罩 -->
+<div class="mask" id="acctMask"><div class="sheet acct-sheet">
+  <h3><span>账号与数据权限</span><button class="x" id="acctClose">×</button></h3>
+  <div class="note">管理员可增删账号、设密码、分配角色与归属公司/地区。成员登录后只能看到自己负责的公司数据。</div>
+  <div class="acct-add-row">
+    <input id="acctNewUser" type="text" placeholder="新账号名（如 zhangsan）">
+    <input id="acctNewName" type="text" placeholder="姓名/备注（如 张三）">
+    <input id="acctNewPwd" type="text" placeholder="初始密码">
+    <button class="btn primary sm" id="acctAdd">＋ 添加</button>
+  </div>
+  <div id="acctList" class="acct-list"></div>
+  <div class="sheet-actions"><button class="btn ghost" id="acctDone">完成</button></div>
+</div></div>
+
+<!-- 目标管理遮罩 -->
+<div class="mask" id="targetMask"><div class="sheet target-sheet">
+  <h3><span>🎯 年度目标管理</span><button class="x" id="tgtClose">×</button></h3>
+  <div class="note">按公司 × 月份 设定各公司年度目标，总览/总目标自动汇总各公司。修改单元格自动保存。
+    <br>上传格式：CSV/TXT 每行 <code>月份,公司,目标额</code>（如 <code>2026-03,北京光呐,2500000</code>）；或 <code>公司,全年目标</code> 自动均摊 12 月。
+  </div>
+  <div class="tgt-toolbar">
+    <label>年份</label><select id="tgtYear" class="seg"></select>
+    <label class="tgt-legacy" id="tgtLegacyBox" style="display:none">旧版总目标</label><input id="tgtLegacyVal" class="seg" disabled placeholder="—">
+    <button class="btn ghost sm" id="tgtUpload">📥 上传CSV</button>
+    <button class="btn ghost sm" id="tgtExport">📤 导出CSV</button>
+    <button class="btn ghost sm" id="tgtReset" style="color:var(--danger)">清空本年</button>
+    <input type="file" id="tgtFile" accept=".csv,.txt" style="display:none">
+  </div>
+  <div class="tgt-wrap" id="tgtWrap">
+    <table class="tgt-table" id="tgtTable">
+      <thead><tr><th class="tco">公司</th><th>1月</th><th>2月</th><th>3月</th><th>4月</th><th>5月</th><th>6月</th><th>7月</th><th>8月</th><th>9月</th><th>10月</th><th>11月</th><th>12月</th><th class="tall">全年合计</th><th class="tact">操作</th></tr></thead>
+      <tbody id="tgtBody"></tbody>
+      <tfoot><tr id="tgtFoot"></tr></tfoot>
+    </table>
+  </div>
+  <div class="sheet-actions"><button class="btn ghost" id="tgtDone">完成</button></div>
+</div></div>
+
+<div class="overlay" id="attOverlay" style="display:none"><div class="att-card">
+  <div class="att-head"><span id="attTitle">附件</span><button class="x" id="attClose" aria-label="关闭">×</button></div>
+  <div id="attList2" class="att-list"></div>
+  <div class="att-view" id="attView"></div>
+</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const STORE_KEY="wb_trade_v3_records";
+const USERS_KEY="wb_trade_v3_users";
+const SESSION_KEY="wb_trade_v3_session";
+/* ---------- 六家主体公司（归属公司维度，用于登录数据隔离） ---------- */
+const COMPANIES=[
+  {name:"北京宽东方科技", region:"北京"},
+  {name:"北京光呐", region:"北京"},
+  {name:"北京力源澳博", region:"北京"},
+  {name:"北京数巨互动", region:"北京"},
+  {name:"深圳宽东方智造", region:"深圳"},
+  {name:"深圳宽东方新能源", region:"深圳"}
+];
+const REGION_OF_COMPANY={}; COMPANIES.forEach(c=>REGION_OF_COMPANY[c.name]=c.region);
+const REGIONS=["北京","深圳"];
+function companyRegion(name){ return REGION_OF_COMPANY[name]||''; }
+/* 种子数据板块 → 归属公司 兜底映射（仅旧数据首次迁移用） */
+function migrateCompany(r){
+  if(r.归属公司) return r;
+  if(r.板块==='深圳智造') r.归属公司='深圳宽东方智造';
+  else if(r.板块==='深圳新能源') r.归属公司='深圳宽东方新能源';
+  return r;
+}
+const SEED_DATA = [{"板块":"深圳智造","月份":"2025-06","上游公司":"深圳市迪威数据科技有限公司","下游公司":"全民点游科技有限公司","交易情况":"已完成","备注":"","上游应收金额":6960000,"上游已走金额":6960000,"上游开票金额":6960000,"下游应付金额":6840000,"下游已走金额":6840000,"下游开票金额":6840000,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202506001"},{"板块":"深圳智造","月份":"2024-06","上游公司":"天津中科遥感空间信息技术股份有限公司","下游公司":"福建神旅文化产业集团有限公司","交易情况":"已完成","备注":"","上游应收金额":5084886.05,"上游已走金额":5084886.05,"上游开票金额":5084886.05,"下游应付金额":4983228.25,"下游已走金额":4983228.25,"下游开票金额":4983228.25,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202406001"},{"板块":"深圳智造","月份":"2025-12","上游公司":"安徽圣点智能制造有限公司","下游公司":"深圳市索威尔科技开发有限公司","交易情况":"欠款","备注":"","上游应收金额":4947030,"上游已走金额":4947030,"上游开票金额":4947030,"下游应付金额":4927952,"下游已走金额":2613838,"下游开票金额":4927952,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202512001"},{"板块":"深圳智造","月份":"2024-12","上游公司":"深圳市创逸科技有限公司","下游公司":"东莞市俏一姐商贸有限公司","交易情况":"已完成","备注":"","上游应收金额":3045338,"上游已走金额":3045338,"上游开票金额":3045338,"下游应付金额":3036190,"下游已走金额":3036190,"下游开票金额":3036190,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202412001"},{"板块":"深圳智造","月份":"2025-10","上游公司":"深圳迅策科技股份有限公司","下游公司":"全民点游科技有限公司","交易情况":"欠款","备注":"","上游应收金额":8424000,"上游已走金额":5100000,"上游开票金额":0,"下游应付金额":8176000,"下游已走金额":5000000,"下游开票金额":0,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202510001"},{"板块":"深圳智造","月份":"2025-06","上游公司":"滁州圣点科技有限公司","下游公司":"全民点游科技有限公司","交易情况":"欠款","备注":"","上游应收金额":6840000,"上游已走金额":6840000,"上游开票金额":6840000,"下游应付金额":6690000,"下游已走金额":6140500,"下游开票金额":6690000,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202506002"},{"板块":"深圳智造","月份":"2025-06","上游公司":"深圳市迪威数据科技有限公司","下游公司":"全民点游科技有限公司","交易情况":"已完成","备注":"","上游应收金额":467440,"上游已走金额":467440,"上游开票金额":467440,"下游应付金额":458000,"下游已走金额":458000,"下游开票金额":458000,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202506003"},{"板块":"深圳智造","月份":"2025-12","上游公司":"滁州圣点科技有限公司","下游公司":"深圳昌恩智能股份有限公司","交易情况":"欠款","备注":"","上游应收金额":2837860,"上游已走金额":208300,"上游开票金额":2837860,"下游应付金额":2808719.94,"下游已走金额":2808719.94,"下游开票金额":2808719.94,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202512002"},{"板块":"深圳智造","月份":"2025-07","上游公司":"山东浪潮华光光电子股份有限公司","下游公司":"全民点游科技有限公司","交易情况":"已完成","备注":"","上游应收金额":30720000,"上游已走金额":30720000,"上游开票金额":30720000,"下游应付金额":30416000,"下游已走金额":30416000,"下游开票金额":30416000,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202507001"},{"板块":"深圳智造","月份":"2025-06","上游公司":"深圳逸灵智行科技有限公司","下游公司":"全民点游科技有限公司","交易情况":"已完成","备注":"","上游应收金额":4400000,"上游已走金额":4400000,"上游开票金额":4400000,"下游应付金额":4320000,"下游已走金额":4320000,"下游开票金额":4320000,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202506004"},{"板块":"深圳智造","月份":"2025-12","上游公司":"安徽圣点智能制造有限公司","下游公司":"深圳昌恩智能股份有限公司","交易情况":"欠款","备注":"","上游应收金额":6830880,"上游已走金额":6830880,"上游开票金额":6830880,"下游应付金额":6768672.5,"下游已走金额":3632397.62,"下游开票金额":6768672.5,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202512003"},{"板块":"深圳智造","月份":"2026-03","上游公司":"浙江创邻科技有限公司","下游公司":"深圳盛必达通信有限公司","交易情况":"欠款","备注":"","上游应收金额":7636100,"上游已走金额":7636100,"上游开票金额":7636100,"下游应付金额":7619000,"下游已走金额":7619000,"下游开票金额":0,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202603001"},{"板块":"深圳智造","月份":"2025-09","上游公司":"江苏圣点世纪科技有限公司","下游公司":"全民点游科技有限公司","交易情况":"欠款","备注":"","上游应收金额":12924000,"上游已走金额":12924000,"上游开票金额":0,"下游应付金额":12600000,"下游已走金额":11924000,"下游开票金额":0,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202509001"},{"板块":"深圳智造","月份":"2025-12","上游公司":"安徽圣点智能制造有限公司","下游公司":"深圳昌恩智能股份有限公司","交易情况":"欠款","备注":"","上游应收金额":2858960,"上游已走金额":2758960,"上游开票金额":2858960,"下游应付金额":2829819.94,"下游已走金额":2829819.94,"下游开票金额":2829819.94,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202512004"},{"板块":"深圳智造","月份":"2025-03","上游公司":"滁州圣点科技有限公司","下游公司":"全民点游科技有限公司","交易情况":"已完成","备注":"","上游应收金额":6630000,"上游已走金额":6630000,"上游开票金额":6630000,"下游应付金额":6450000,"下游已走金额":6450000,"下游开票金额":6650707.96,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202503001"},{"板块":"深圳智造","月份":"2025-07","上游公司":"深圳市迪威数据科技有限公司","下游公司":"全民点游科技有限公司","交易情况":"欠款","备注":"","上游应收金额":1445600,"上游已走金额":1445600,"上游开票金额":575600,"下游应付金额":1418040,"下游已走金额":0,"下游开票金额":575600,"税金":"","流量费":"","利润金额":"","_anom":true,"来源":"钉钉","合同编号":"HT202507002"},{"板块":"深圳智造","月份":"2024-07","上游公司":"江苏智慧数字认证有限公司","下游公司":"深圳市玛雅通讯设备有限公司","交易情况":"已完成","备注":"","上游应收金额":2913049.4,"上游已走金额":2913049.4,"上游开票金额":2913049.4,"下游应付金额":2854810.6,"下游已走金额":2854810.6,"下游开票金额":2854810.6,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202407001"},{"板块":"深圳智造","月份":"2025-02","上游公司":"深圳市研祥智慧科技股份有限公司","下游公司":"南京致益联信息科技有限公司","交易情况":"已完成","备注":"","上游应收金额":4946265,"上游已走金额":4946265,"上游开票金额":4946265,"下游应付金额":4936368,"下游已走金额":4936368,"下游开票金额":4936368,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202502001"},{"板块":"深圳智造","月份":"2025-12","上游公司":"滁州圣点科技有限公司","下游公司":"深圳昌恩智能股份有限公司","交易情况":"欠款","备注":"","上游应收金额":5580630,"上游已走金额":4531938.5,"上游开票金额":5580630,"下游应付金额":5518422.5,"下游已走金额":5518422.5,"下游开票金额":5518422.5,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202512005"},{"板块":"深圳智造","月份":"2025-09","上游公司":"圣点世纪科技股份有限公司","下游公司":"全民点游科技有限公司","交易情况":"欠款","备注":"","上游应收金额":12968400,"上游已走金额":12968400,"上游开票金额":0,"下游应付金额":12840000,"下游已走金额":12840000,"下游开票金额":0,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202509002"},{"板块":"深圳智造","月份":"2025-12","上游公司":"滁州圣点科技有限公司","下游公司":"深圳市索威尔科技开发有限公司","交易情况":"欠款","备注":"","上游应收金额":4405240,"上游已走金额":4405240,"上游开票金额":4405240,"下游应付金额":4386162,"下游已走金额":4386162,"下游开票金额":4386162,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202512006"},{"板块":"深圳智造","月份":"2026-04","上游公司":"浙江创邻科技有限公司","下游公司":"深圳盛必达通信有限公司","交易情况":"欠款","备注":"","上游应收金额":29000000,"上游已走金额":18800000,"上游开票金额":14500000,"下游应付金额":28430000,"下游已走金额":24215000,"下游开票金额":14215000,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202604001"},{"板块":"深圳智造","月份":"2025-04","上游公司":"安徽融联信安信息科技有限公司","下游公司":"全民点游科技有限公司","交易情况":"欠款","备注":"","上游应收金额":2420000,"上游已走金额":2420000,"上游开票金额":2420000,"下游应付金额":2350000,"下游已走金额":2350000,"下游开票金额":2350000,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202504001"},{"板块":"深圳智造","月份":"2025-05","上游公司":"深圳市迪威数据科技有限公司","下游公司":"全民点游科技有限公司","交易情况":"已完成","备注":"","上游应收金额":72060,"上游已走金额":72060,"上游开票金额":72060,"下游应付金额":70580,"下游已走金额":70580,"下游开票金额":70580,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202505001"},{"板块":"深圳智造","月份":"2026-06","上游公司":"杭州迪威迅信息科技有限公司","下游公司":"厦门点思智创科技有限公司","交易情况":"欠款","备注":"","上游应收金额":26400000,"上游已走金额":8700000,"上游开票金额":0,"下游应付金额":26320000,"下游已走金额":8700000,"下游开票金额":0,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202606001"},{"板块":"深圳智造","月份":"2025-03","上游公司":"深圳市迪威数据科技有限公司","下游公司":"全民点游科技有限公司","交易情况":"已完成","备注":"","上游应收金额":1008840,"上游已走金额":1008840,"上游开票金额":1008840,"下游应付金额":988120,"下游已走金额":988120,"下游开票金额":988120,"税金":"","流量费":"","利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202503002"},{"板块":"深圳智造","月份":"2026-05","上游公司":"深圳市仕力嘉科技有限公司","下游公司":"深圳尺子科技有限公司","交易情况":"欠款","备注":"","上游应收金额":15960000,"上游已走金额":0,"上游开票金额":15960000,"下游应付金额":15450000,"下游已走金额":3424000,"下游开票金额":0,"税金":"","流量费":"","利润金额":"","_anom":true,"来源":"钉钉","合同编号":"HT202605001"},{"板块":"深圳新能源","月份":"2025-06","上游公司":"深圳市华力特系统技术有限公司","下游公司":"东莞市凤岗华辉电控设备厂","交易情况":"已完成","备注":"","上游应收金额":84961.2,"上游已走金额":84961.2,"上游开票金额":84961.2,"下游应付金额":84120,"下游已走金额":84120,"下游开票金额":"","税金":"","流量费":0,"利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202506005"},{"板块":"深圳新能源","月份":"2026-05","上游公司":"深圳云鑫智联科技有限公司","下游公司":"/","交易情况":"已完成","备注":"","上游应收金额":50000,"上游已走金额":50000,"上游开票金额":50000,"下游应付金额":0,"下游已走金额":0,"下游开票金额":"","税金":"","流量费":0,"利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202605002"},{"板块":"深圳新能源","月份":"2026-02","上游公司":"深圳云鑫智联科技有限公司","下游公司":"/","交易情况":"已完成","备注":"","上游应收金额":30000,"上游已走金额":30000,"上游开票金额":30000,"下游应付金额":0,"下游已走金额":0,"下游开票金额":"","税金":"","流量费":0,"利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202602001"},{"板块":"深圳新能源","月份":"2025-08","上游公司":"宜兴市欣驰能源科技有限公司","下游公司":"广东美智智能科技有限公司","交易情况":"已完成","备注":"","上游应收金额":1264936,"上游已走金额":1264936,"上游开票金额":1264936,"下游应付金额":1260980,"下游已走金额":1260980,"下游开票金额":"","税金":"","流量费":4427.276,"利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202508001"},{"板块":"深圳新能源","月份":"2026-04","上游公司":"衢州晟材供应链有限公司","下游公司":"湖北雷霆科技股份有限公司","交易情况":"已完成","备注":"","上游应收金额":2968200,"上游已走金额":2968200,"上游开票金额":2968200,"下游应付金额":2958200,"下游已走金额":2958200,"下游开票金额":"","税金":"","流量费":10388.7,"利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202604002"},{"板块":"深圳新能源","月份":"2025-05","上游公司":"深圳市华力特系统技术有限公司","下游公司":"东莞市凤岗华辉电控设备厂","交易情况":"已完成","备注":"","上游应收金额":40299,"上游已走金额":40299,"上游开票金额":40299,"下游应付金额":39900,"下游已走金额":39900,"下游开票金额":"","税金":"","流量费":0,"利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202505002"},{"板块":"深圳新能源","月份":"2026-06","上游公司":"深圳中鹏新电气技术有限公司","下游公司":"金鸟科技（湖北）有限公司","交易情况":"欠款","备注":"","上游应收金额":4596119,"上游已走金额":0,"上游开票金额":4596119,"下游应付金额":4559544,"下游已走金额":0,"下游开票金额":"","税金":"","流量费":18384.476,"利润金额":"","_anom":true,"来源":"钉钉","合同编号":"HT202606002"},{"板块":"深圳新能源","月份":"2025-12","上游公司":"陆丰星河云海科技有限公司","下游公司":"江西盈科数码科技有限公司","交易情况":"已完成","备注":"","上游应收金额":2091600,"上游已走金额":2091600,"上游开票金额":2091600,"下游应付金额":2087400,"下游已走金额":2087400,"下游开票金额":"","税金":"","流量费":7320.6,"利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202512007"},{"板块":"深圳新能源","月份":"2025-09","上游公司":"南京永熙能源科技有限公司","下游公司":"江西晨江科技有限公司","交易情况":"已完成","备注":"","上游应收金额":1365168,"上游已走金额":1365168,"上游开票金额":1365168,"下游应付金额":1360598.4,"下游已走金额":1360598.4,"下游开票金额":"","税金":"","流量费":4778.088,"利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202509003"},{"板块":"深圳新能源","月份":"2025-10","上游公司":"江苏东一电子科技有限公司","下游公司":"江西沁洋新能源有限公司","交易情况":"已完成","备注":"","上游应收金额":2466230,"上游已走金额":2466230,"上游开票金额":2466230,"下游应付金额":2460984,"下游已走金额":2460984,"下游开票金额":"","税金":"","流量费":8631.805,"利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202510002"},{"板块":"深圳新能源","月份":"2026-04","上游公司":"浙江飞盛新材料科技有限公司","下游公司":"湖北雷霆科技股份有限公司","交易情况":"已完成","备注":"","上游应收金额":2075500,"上游已走金额":2075500,"上游开票金额":2075500,"下游应付金额":2070250,"下游已走金额":2070250,"下游开票金额":"","税金":"","流量费":7264.25,"利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202604003"},{"板块":"深圳新能源","月份":"2025-08","上游公司":"宜兴市欣驰能源科技有限公司","下游公司":"广东美智智能科技有限公司","交易情况":"已完成","备注":"","上游应收金额":1548147.2,"上游已走金额":1548147.2,"上游开票金额":1548147.2,"下游应付金额":1543054.4,"下游已走金额":1543054.4,"下游开票金额":"","税金":"","流量费":5418.5152,"利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202508002"},{"板块":"深圳新能源","月份":"2025-11","上游公司":"江西孚卡科技有限公司","下游公司":"瑞金市安和城市运营服务有限公司","交易情况":"已完成","备注":"","上游应收金额":1738650,"上游已走金额":1738650,"上游开票金额":1738650,"下游应付金额":1735200,"下游已走金额":1735200,"下游开票金额":"","税金":"","流量费":6085.275,"利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202511001"},{"板块":"深圳新能源","月份":"2026-03","上游公司":"湖南云谷智能科技有限公司","下游公司":"南京司凯奇汽车科技有限公司","交易情况":"已完成","备注":"","上游应收金额":5472950,"上游已走金额":5472950,"上游开票金额":5472950,"下游应付金额":5456250,"下游已走金额":5456250,"下游开票金额":"","税金":"","流量费":19155.325,"利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202603002"},{"板块":"深圳新能源","月份":"2025-09","上游公司":"南京永熙能源科技有限公司","下游公司":"江西晨江科技有限公司","交易情况":"已完成","备注":"","上游应收金额":1440896.9,"上游已走金额":1440896.9,"上游开票金额":1440896.9,"下游应付金额":1436350.2,"下游已走金额":1436350.2,"下游开票金额":"","税金":"","流量费":5043.13915,"利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202509004"},{"板块":"深圳新能源","月份":"2026-01","上游公司":"南京沿途汽车用品有限公司","下游公司":"南京司凯奇汽车科技有限公司","交易情况":"已完成","备注":"","上游应收金额":4903200,"上游已走金额":4903200,"上游开票金额":4903200,"下游应付金额":4888800,"下游已走金额":4888800,"下游开票金额":"","税金":"","流量费":17161.2,"利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202601001"},{"板块":"深圳新能源","月份":"2025-10","上游公司":"江苏东一电子科技有限公司","下游公司":"江西沁洋新能源有限公司","交易情况":"已完成","备注":"","上游应收金额":332930,"上游已走金额":332930,"上游开票金额":332930,"下游应付金额":331890,"下游已走金额":331890,"下游开票金额":"","税金":"","流量费":1165.255,"利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202510003"},{"板块":"深圳新能源","月份":"2026-07","上游公司":"深圳市莱拉智城科技有限公司","下游公司":"金鸟科技（湖北）有限公司","交易情况":"欠款","备注":"","上游应收金额":5341150,"上游已走金额":"","上游开票金额":"","下游应付金额":5314571,"下游已走金额":"","下游开票金额":"","税金":"","流量费":21364.6,"利润金额":"","_anom":true,"来源":"钉钉","合同编号":"HT202607001"},{"板块":"深圳新能源","月份":"2025-11","上游公司":"江西孚卡科技有限公司","下游公司":"瑞金市瑞兴建设投资有限公司","交易情况":"已完成","备注":"","上游应收金额":2985000,"上游已走金额":2985000,"上游开票金额":2985000,"下游应付金额":2979000,"下游已走金额":2979000,"下游开票金额":"","税金":"","流量费":10447.5,"利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202511002"},{"板块":"深圳智造","月份":"2026-08","上游公司":"深圳市迪威数据科技有限公司","下游公司":"全民点游科技有限公司","交易情况":"已完成","备注":"本月新签 · 已全款结清","上游应收金额":3200000,"上游已走金额":3200000,"上游开票金额":3200000,"下游应付金额":3150000,"下游已走金额":3150000,"下游开票金额":3150000,"税金":"","流量费":11200,"利润金额":50000,"_anom":false,"来源":"钉钉","合同编号":"HT202608001"},{"板块":"深圳智造","月份":"2026-08","上游公司":"安徽圣点智能制造有限公司","下游公司":"深圳市索威尔科技开发有限公司","交易情况":"欠款","备注":"本月新签 · 上游回款部分到账，下游待付","上游应收金额":2600000,"上游已走金额":1000000,"上游开票金额":1000000,"下游应付金额":2580000,"下游已走金额":500000,"下游开票金额":"","税金":"","流量费":9100,"利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202608002"},{"板块":"深圳新能源","月份":"2026-08","上游公司":"深圳市莱拉智城科技有限公司","下游公司":"金鸟科技（湖北）有限公司","交易情况":"欠款","备注":"本月新签 · 下游付款进行中","上游应收金额":1800000,"上游已走金额":1800000,"上游开票金额":1800000,"下游应付金额":1790000,"下游已走金额":900000,"下游开票金额":1790000,"税金":"","流量费":7200,"利润金额":"","_anom":false,"来源":"钉钉","合同编号":"HT202608003"}];
+/* 北京四家公司月度汇总记录（源自《2026年各公司全年贸易汇总_计划表》1-7月实际收入；每月一条，待补明细） */
+const BJ_SEED_DATA=[
+{"归属公司":"北京宽东方科技","板块":"北京宽东方科技","月份":"2026-01","上游公司":"（月度汇总）","下游公司":"","交易情况":"已完成","备注":"2026年1月实际收入·源自贸易汇总计划表","上游应收金额":8918619,"上游已走金额":8918619,"上游开票金额":8918619,"下游应付金额":"","下游已走金额":"","下游开票金额":"","税金":"","流量费":"","利润金额":"","_anom":false,"来源":"计划表","合同编号":""},
+{"归属公司":"北京宽东方科技","板块":"北京宽东方科技","月份":"2026-02","上游公司":"（月度汇总）","下游公司":"","交易情况":"已完成","备注":"2026年2月实际收入·源自贸易汇总计划表","上游应收金额":8787812,"上游已走金额":8787812,"上游开票金额":8787812,"下游应付金额":"","下游已走金额":"","下游开票金额":"","税金":"","流量费":"","利润金额":"","_anom":false,"来源":"计划表","合同编号":""},
+{"归属公司":"北京宽东方科技","板块":"北京宽东方科技","月份":"2026-03","上游公司":"（月度汇总）","下游公司":"","交易情况":"已完成","备注":"2026年3月实际收入·源自贸易汇总计划表","上游应收金额":15143218,"上游已走金额":15143218,"上游开票金额":15143218,"下游应付金额":"","下游已走金额":"","下游开票金额":"","税金":"","流量费":"","利润金额":"","_anom":false,"来源":"计划表","合同编号":""},
+{"归属公司":"北京宽东方科技","板块":"北京宽东方科技","月份":"2026-04","上游公司":"（月度汇总）","下游公司":"","交易情况":"已完成","备注":"2026年4月实际收入·源自贸易汇总计划表","上游应收金额":11424374,"上游已走金额":11424374,"上游开票金额":11424374,"下游应付金额":"","下游已走金额":"","下游开票金额":"","税金":"","流量费":"","利润金额":"","_anom":false,"来源":"计划表","合同编号":""},
+{"归属公司":"北京宽东方科技","板块":"北京宽东方科技","月份":"2026-05","上游公司":"（月度汇总）","下游公司":"","交易情况":"已完成","备注":"2026年5月实际收入·源自贸易汇总计划表","上游应收金额":9636277,"上游已走金额":9636277,"上游开票金额":9636277,"下游应付金额":"","下游已走金额":"","下游开票金额":"","税金":"","流量费":"","利润金额":"","_anom":false,"来源":"计划表","合同编号":""},
+{"归属公司":"北京宽东方科技","板块":"北京宽东方科技","月份":"2026-06","上游公司":"（月度汇总）","下游公司":"","交易情况":"已完成","备注":"2026年6月实际收入·源自贸易汇总计划表","上游应收金额":10673208,"上游已走金额":10673208,"上游开票金额":10673208,"下游应付金额":"","下游已走金额":"","下游开票金额":"","税金":"","流量费":"","利润金额":"","_anom":false,"来源":"计划表","合同编号":""},
+{"归属公司":"北京宽东方科技","板块":"北京宽东方科技","月份":"2026-07","上游公司":"（月度汇总）","下游公司":"","交易情况":"已完成","备注":"2026年7月实际收入·源自贸易汇总计划表","上游应收金额":13107236,"上游已走金额":13107236,"上游开票金额":13107236,"下游应付金额":"","下游已走金额":"","下游开票金额":"","税金":"","流量费":"","利润金额":"","_anom":false,"来源":"计划表","合同编号":""},
+{"归属公司":"北京光呐","板块":"北京光呐","月份":"2026-01","上游公司":"（月度汇总）","下游公司":"","交易情况":"已完成","备注":"2026年1月实际收入·源自贸易汇总计划表","上游应收金额":1400000,"上游已走金额":1400000,"上游开票金额":1400000,"下游应付金额":"","下游已走金额":"","下游开票金额":"","税金":"","流量费":"","利润金额":"","_anom":false,"来源":"计划表","合同编号":""},
+{"归属公司":"北京光呐","板块":"北京光呐","月份":"2026-02","上游公司":"（月度汇总）","下游公司":"","交易情况":"已完成","备注":"2026年2月实际收入·源自贸易汇总计划表","上游应收金额":1236000,"上游已走金额":1236000,"上游开票金额":1236000,"下游应付金额":"","下游已走金额":"","下游开票金额":"","税金":"","流量费":"","利润金额":"","_anom":false,"来源":"计划表","合同编号":""},
+{"归属公司":"北京光呐","板块":"北京光呐","月份":"2026-03","上游公司":"（月度汇总）","下游公司":"","交易情况":"已完成","备注":"2026年3月实际收入·源自贸易汇总计划表","上游应收金额":1150000,"上游已走金额":1150000,"上游开票金额":1150000,"下游应付金额":"","下游已走金额":"","下游开票金额":"","税金":"","流量费":"","利润金额":"","_anom":false,"来源":"计划表","合同编号":""},
+{"归属公司":"北京光呐","板块":"北京光呐","月份":"2026-04","上游公司":"（月度汇总）","下游公司":"","交易情况":"已完成","备注":"2026年4月实际收入·源自贸易汇总计划表","上游应收金额":1180000,"上游已走金额":1180000,"上游开票金额":1180000,"下游应付金额":"","下游已走金额":"","下游开票金额":"","税金":"","流量费":"","利润金额":"","_anom":false,"来源":"计划表","合同编号":""},
+{"归属公司":"北京光呐","板块":"北京光呐","月份":"2026-05","上游公司":"（月度汇总）","下游公司":"","交易情况":"已完成","备注":"2026年5月实际收入·源自贸易汇总计划表","上游应收金额":2100000,"上游已走金额":2100000,"上游开票金额":2100000,"下游应付金额":"","下游已走金额":"","下游开票金额":"","税金":"","流量费":"","利润金额":"","_anom":false,"来源":"计划表","合同编号":""},
+{"归属公司":"北京光呐","板块":"北京光呐","月份":"2026-06","上游公司":"（月度汇总）","下游公司":"","交易情况":"已完成","备注":"2026年6月实际收入·源自贸易汇总计划表","上游应收金额":2180000,"上游已走金额":2180000,"上游开票金额":2180000,"下游应付金额":"","下游已走金额":"","下游开票金额":"","税金":"","流量费":"","利润金额":"","_anom":false,"来源":"计划表","合同编号":""},
+{"归属公司":"北京光呐","板块":"北京光呐","月份":"2026-07","上游公司":"（月度汇总）","下游公司":"","交易情况":"已完成","备注":"2026年7月实际收入·源自贸易汇总计划表","上游应收金额":1963000,"上游已走金额":1963000,"上游开票金额":1963000,"下游应付金额":"","下游已走金额":"","下游开票金额":"","税金":"","流量费":"","利润金额":"","_anom":false,"来源":"计划表","合同编号":""},
+{"归属公司":"北京力源澳博","板块":"北京力源澳博","月份":"2026-04","上游公司":"（月度汇总）","下游公司":"","交易情况":"已完成","备注":"2026年4月实际收入·源自贸易汇总计划表","上游应收金额":500000,"上游已走金额":500000,"上游开票金额":500000,"下游应付金额":"","下游已走金额":"","下游开票金额":"","税金":"","流量费":"","利润金额":"","_anom":false,"来源":"计划表","合同编号":""},
+{"归属公司":"北京力源澳博","板块":"北京力源澳博","月份":"2026-05","上游公司":"（月度汇总）","下游公司":"","交易情况":"已完成","备注":"2026年5月实际收入·源自贸易汇总计划表","上游应收金额":795000,"上游已走金额":795000,"上游开票金额":795000,"下游应付金额":"","下游已走金额":"","下游开票金额":"","税金":"","流量费":"","利润金额":"","_anom":false,"来源":"计划表","合同编号":""},
+{"归属公司":"北京力源澳博","板块":"北京力源澳博","月份":"2026-06","上游公司":"（月度汇总）","下游公司":"","交易情况":"已完成","备注":"2026年6月实际收入·源自贸易汇总计划表","上游应收金额":1995000,"上游已走金额":1995000,"上游开票金额":1995000,"下游应付金额":"","下游已走金额":"","下游开票金额":"","税金":"","流量费":"","利润金额":"","_anom":false,"来源":"计划表","合同编号":""},
+{"归属公司":"北京力源澳博","板块":"北京力源澳博","月份":"2026-07","上游公司":"（月度汇总）","下游公司":"","交易情况":"已完成","备注":"2026年7月实际收入·源自贸易汇总计划表","上游应收金额":1845000,"上游已走金额":1845000,"上游开票金额":1845000,"下游应付金额":"","下游已走金额":"","下游开票金额":"","税金":"","流量费":"","利润金额":"","_anom":false,"来源":"计划表","合同编号":""},
+{"归属公司":"北京数巨互动","板块":"北京数巨互动","月份":"2026-05","上游公司":"（月度汇总）","下游公司":"","交易情况":"已完成","备注":"2026年5月实际收入·源自贸易汇总计划表","上游应收金额":950000,"上游已走金额":950000,"上游开票金额":950000,"下游应付金额":"","下游已走金额":"","下游开票金额":"","税金":"","流量费":"","利润金额":"","_anom":false,"来源":"计划表","合同编号":""},
+{"归属公司":"北京数巨互动","板块":"北京数巨互动","月份":"2026-06","上游公司":"（月度汇总）","下游公司":"","交易情况":"已完成","备注":"2026年6月实际收入·源自贸易汇总计划表","上游应收金额":1000000,"上游已走金额":1000000,"上游开票金额":1000000,"下游应付金额":"","下游已走金额":"","下游开票金额":"","税金":"","流量费":"","利润金额":"","_anom":false,"来源":"计划表","合同编号":""},
+{"归属公司":"北京数巨互动","板块":"北京数巨互动","月份":"2026-07","上游公司":"（月度汇总）","下游公司":"","交易情况":"已完成","备注":"2026年7月实际收入·源自贸易汇总计划表","上游应收金额":750000,"上游已走金额":750000,"上游开票金额":750000,"下游应付金额":"","下游已走金额":"","下游开票金额":"","税金":"","流量费":"","利润金额":"","_anom":false,"来源":"计划表","合同编号":""}
+];
+const NOW=new Date(2026,7,1);
+let records=[], curFilter="all", curTab="all", curStatus="all", curSearch="", curMonth="", editingId=null;
+let users=[], curUser=null;
+const $=s=>document.querySelector(s);
+const fmt=n=>{ if(n===null||n===undefined||n===''||isNaN(n)) return '—'; const v=Math.round(Number(n)*100)/100; return '¥'+v.toLocaleString('zh-CN',{maximumFractionDigits:0}); };
+const num=v=>{ if(v===''||v==null) return 0; const n=parseFloat(v); return isNaN(n)?0:n; };
+const monthOf=s=> s? s.slice(0,7):'';
+const curMonthStr=()=> NOW.getFullYear()+'-'+String(NOW.getMonth()+1).padStart(2,'0');
+const gross=r=> num(r.上游应收金额)-num(r.下游应付金额)-(num(r.流量费)||0)-(num(r.税金)||0);
+const upUn=r=> num(r.上游应收金额)-num(r.上游已走金额);
+const downUn=r=> num(r.下游应付金额)-num(r.下游已走金额);
+const unwalked=r=> upUn(r)+downUn(r);
+const settledRate=ds=>{ const a=ds.reduce((s,r)=>s+num(r.上游应收金额),0), b=ds.reduce((s,r)=>s+num(r.上游已走金额),0); return a>0?Math.round(b/a*100):0; };
+const ageMonths=r=>{ const m=monthOf(r.月份); if(!m) return 0; const [y,mo]=m.split('-').map(Number); return Math.max(0,(NOW.getFullYear()*12+NOW.getMonth())-(y*12+(mo-1))); };
+const isAnom=r=> (num(r.上游已走金额)<=0 && num(r.上游应收金额)>0) || (num(r.下游已走金额)<=0 && num(r.下游应付金额)>0);
+/* 勾稽校验：返回 [级别, 文案] 列表，err=红(异常/亏损) warn=橙(待核对) */
+function checkRecord(r){
+  const upR=num(r.上游应收金额), upW=num(r.上游已走金额), downP=num(r.下游应付金额), downW=num(r.下游已走金额);
+  const upInv=num(r.上游开票金额), downInv=num(r.下游开票金额); const out=[];
+  if(upR>0 && upW<=0.001) out.push(['err','应收未收']);
+  if(downP>0 && downW<=0.001) out.push(['err','应付未付']);
+  if(gross(r)<0) out.push(['err','亏损单']);
+  if(r.交易情况==='已完成' && unwalked(r)>0.5) out.push(['warn','标记完成但仍有欠款']);
+  if(upW>upR+0.5) out.push(['warn','上游已走超应收']);
+  if(downW>downP+0.5) out.push(['warn','下游已走超应付']);
+  if(upInv>upR+0.5) out.push(['warn','上游开票超应收']);
+  if(downInv>downP+0.5) out.push(['warn','下游开票超应付']);
+  if(!r.上游公司 && !r.下游公司) out.push(['warn','缺公司名']);
+  if(!r.月份) out.push(['warn','缺月份']);
+  return out;
+}
+function checksHTML(r){ const is=checkRecord(r); if(!is.length) return ''; return '<div class="rc-check">'+is.map(([lv,t])=>`<span class="tag ${lv==='err'?'anom':'warn'}">${t}</span>`).join('')+'</div>'; }
+/* 统一筛选：板块 + 状态 + 关键词 + 账号归属隔离，全站各区块共用 */
+const filtered=()=> visibleRecords()
+  .filter(r=> curFilter==='all'||r.板块===curFilter)
+  .filter(r=> curStatus==='all'||r.交易情况===curStatus)
+  .filter(r=> !curMonth || monthOf(r.月份)===curMonth)
+  .filter(r=>{ if(!curSearch) return true; const s=curSearch.toLowerCase(); return [r.上游公司,r.下游公司,r.月份,r.交易情况,r.板块,r.备注,r.来源,r.归属公司].some(v=>(v||'').toLowerCase().includes(s)); });
+const STATUS={'已完成':'b-done','欠款':'b-owed','进行中':'b-doing','未启动':'b-todo'};
+const esc=s=>(s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+/* ---------- Supabase 远程持久化（替换原 资料库 SDK） ---------- */
+/* 配置：Supabase 后台 → Project Settings → API 复制 Project URL 与 anon/public key，填入下方两行即可上线 */
+const SUPABASE_URL = "https://dnvfdhihdybastdjjdbk.supabase.co";            // 由 anon JWT 解析得到
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRudmZkaGloZHliYXN0ZGpqZGJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1ODU3NTMsImV4cCI6MjEwMzE2MTc1M30.BPLiecBstURUPxROsKU4161UrTXHlSA3Q95Or8tBP3s";  // anon / public 密钥（浏览器端公开，靠 RLS 保护）
+const sb = (SUPABASE_URL && SUPABASE_URL.startsWith("http") && window.supabase)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+let _dbReady=false, _dbRows={records:null, target:null, users:null};
+function dbAvailable(){ return !!sb; }
+async function dbLoad(){
+  if(!sb) return false;
+  try{
+    const { data, error } = await sb.from('kv').select('key,value').in('key',['records','target','users']);
+    if(error) throw error;
+    const map={}; (data||[]).forEach(r=>{ map[r.key]=r.value; });
+    let hit=false;
+    if(map.records && Array.isArray(map.records) && map.records.length){
+      records = map.records.map(r=>{ if(r.板块==='智造深圳')r.板块='深圳智造'; else if(r.板块==='新能源')r.板块='深圳新能源'; migrateCompany(r); return r; });
+      _dbRows.records=true; hit=true;
+    }
+    if(map.target && map.target.years && Object.keys(map.target.years).length){ target=map.target; migrateTarget(); _dbRows.target=true; hit=true; }
+    if(map.users && Array.isArray(map.users)){ users=map.users; _dbRows.users=true; }
+    _dbReady=true; return hit;
+  }catch(e){ _dbReady=false; return false; }
+}
+let _saveChain = Promise.resolve(true);
+/* 串行化所有云端写入，避免并发时状态/数据错乱（替代原 _dbSaving 去抖） */
+function dbSave(){
+  if(!sb) return Promise.resolve(false);
+  _saveChain = _saveChain.then(async ()=>{
+    try{
+      const now=new Date().toISOString();
+      const rows=[
+        {key:'records', value:records, updated_at:now},
+        {key:'target',  value:target,  updated_at:now},
+        {key:'users',   value:users,   updated_at:now}
+      ];
+      const { error } = await sb.from('kv').upsert(rows);
+      if(error) return false;
+      _dbRows={records:true, target:true, users:true};
+      return true;
+    }catch(e){ return false; }
+  });
+  return _saveChain;
+}
+/* 仅保存账号行：避免 boot 阶段把尚未加载/尚未播种的空 records/target 误写云端 */
+async function dbSaveUsers(){
+  if(!sb) return false;
+  try{
+    const now=new Date().toISOString();
+    const { error } = await sb.from('kv').upsert({key:'users', value:users, updated_at:now});
+    if(error) throw error;
+    _dbRows.users=true;
+    return true;
+  }catch(e){ return false; }
+}
+function load(){
+  // 本地优先（离线缓存 / 直接双击打开 HTML）
+  try{ const raw=localStorage.getItem(STORE_KEY); if(raw){ records=JSON.parse(raw);
+    records.forEach(r=>{ if(r.板块==='智造深圳')r.板块='深圳智造'; else if(r.板块==='新能源')r.板块='深圳新能源'; migrateCompany(r); });
+    return; } }catch(e){}
+  // 否则用种子（首次）
+  records = SEED_DATA? SEED_DATA.map((r,i)=>({id:'s'+i,...r})) : []; records.forEach(migrateCompany); save();
+  migrateTarget();
+}
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(records)); }catch(e){ toast('保存失败：本地存储已满（多为附件过大）。请删除部分附件，或导出备份后清空本地数据'); }
+  // 远程持久化（已配置 Supabase 时异步写入；未配置则纯本地）
+  if(dbAvailable()){ dbSave().catch(()=>{}); } }
+function setSyncStatus(ok){ _dbReady=ok; const el=$('#syncBadge'); if(el) el.textContent= ok?'Supabase 已同步':'离线（本地）', el.className='sync-badge '+(ok?'on':'off'); }
+
+/* ================= 账号体系（登录 / 数据隔离 / 账号管理） ================= */
+/* 轻量口令哈希（前端本地校验，非加密安全；防手误与一般查看） */
+function hashPw(s){ let h=5381; const str=String(s||''); for(let i=0;i<str.length;i++){ h=((h<<5)+h+str.charCodeAt(i))|0; } return 'h'+ (h>>>0).toString(36) + str.length.toString(36); }
+function defaultUsers(){
+  return [
+    {username:"admin", name:"管理员", passwordHash:hashPw("admin888"), role:"admin", companies:COMPANIES.map(c=>c.name), regions:REGIONS.slice()},
+    {username:"shenzhen", name:"深圳统筹", passwordHash:hashPw("sz888"), role:"member", companies:["深圳宽东方智造","深圳宽东方新能源"], regions:["深圳"]},
+    {username:"beijing", name:"北京统筹", passwordHash:hashPw("bj888"), role:"member", companies:["北京宽东方科技","北京光呐","北京力源澳博","北京数巨互动"], regions:["北京"]}
+  ];
+}
+function loadUsers(){ try{ const raw=localStorage.getItem(USERS_KEY); if(raw){ const u=JSON.parse(raw); if(Array.isArray(u)&&u.length){ users=u; return; } } }catch(e){} users=defaultUsers(); saveUsers(); }
+function saveUsers(){ try{ localStorage.setItem(USERS_KEY, JSON.stringify(users)); }catch(e){} if(dbAvailable()){ dbSaveUsers().catch(()=>{}); } }
+/* 账号是否可见某条记录：管理员全量；成员按归属公司/地区过滤 */
+function canSeeRecord(u,r){
+  if(!u) return false;
+  if(u.role==='admin') return true;
+  const c=r.归属公司||'';
+  if(u.companies && u.companies.includes(c)) return true;
+  if(u.regions && c && u.regions.includes(companyRegion(c))) return true;
+  return false;
+}
+function visibleRecords(){ if(!curUser) return []; if(curUser.role==='admin') return records; return records.filter(r=>canSeeRecord(curUser,r)); }
+function login(username, password){
+  const u=users.find(x=>x.username===username.trim());
+  if(!u || u.passwordHash!==hashPw(password)){ return null; }
+  curUser=u; try{ localStorage.setItem(SESSION_KEY, u.username); }catch(e){}
+  return u;
+}
+function logout(){ curUser=null; try{ localStorage.removeItem(SESSION_KEY); }catch(e){} }
+function restoreSession(){ try{ const name=localStorage.getItem(SESSION_KEY); if(name){ curUser=users.find(x=>x.username===name)||null; } }catch(e){} }
+/* 当前账号的默认归属公司：成员只有一家则默认那家，否则第一家 */
+function currentCompanyDefault(){
+  if(curUser && curUser.role!=='admin'){
+    if(curUser.companies && curUser.companies.length===1) return curUser.companies[0];
+    if(curUser.companies && curUser.companies.length) return curUser.companies[0];
+    if(curUser.regions && curUser.regions.length){ const r0=curUser.regions[0]; const c=COMPANIES.find(x=>x.region===r0); if(c) return c.name; }
+    return '';
+  }
+  return '';
+}
+/* 填充归属公司下拉：管理员全量，成员仅自己可见的公司 */
+function fillCompanySelect(selId){
+  const sel=document.getElementById(selId); if(!sel) return;
+  const list = (curUser && curUser.role==='admin') ? COMPANIES : COMPANIES.filter(c=>canSeeCompany(curUser,c.name));
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— 选择归属公司 —</option>'+list.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}（${c.region}）</option>`).join('');
+  if(list.some(c=>c.name===cur)) sel.value=cur;
+  else if(list.length===1) sel.value=list[0].name;
+}
+function canSeeCompany(u,c){
+  if(!u) return false;
+  if(u.role==='admin') return true;
+  if(u.companies && u.companies.includes(c)) return true;
+  if(u.regions && u.regions.includes(companyRegion(c))) return true;
+  return false;
+}
+function refreshCompanyRegion(selId, regionId){
+  const sel=document.getElementById(selId); const reg=document.getElementById(regionId);
+  if(reg){ reg.value = sel && sel.value ? companyRegion(sel.value) : ''; }
+}
+function syncAllCompanySelects(){ fillCompanySelect('c_归属公司'); fillCompanySelect('f_归属公司'); }
+
+/* ---------- 北京四家公司月度数据自动补录（老数据/云端数据打开时自动追加一次） ---------- */
+const BJ_SEEDED_KEY="wb_trade_v3_bj_seeded";
+function ensureBJRecords(){
+  try{ if(localStorage.getItem(BJ_SEEDED_KEY)) return; }catch(e){}
+  const hasBJ=records.some(r=>r.归属公司 && companyRegion(r.归属公司)==='北京');
+  if(!hasBJ && BJ_SEED_DATA.length){
+    records=records.concat(BJ_SEED_DATA.map((r,i)=>({id:'bj'+Date.now()+'_'+i,...r})));
+    save();
+  }
+  try{ localStorage.setItem(BJ_SEEDED_KEY,'1'); }catch(e){}
+}
+
+/* ---------- 启动远程加载 ---------- */
+async function bootRemote(){
+  loadUsers();
+  if(!dbAvailable()){ setSyncStatus(false); load(); ensureBJRecords(); restoreSession(); applyAuthUI(); return; }
+  const hit=await dbLoad();
+  // 云端账号行优先（若本地与云端不一致，以云端为准）
+  if(_dbRows.users){ try{ localStorage.setItem(USERS_KEY, JSON.stringify(users)); }catch(e){} }
+  restoreSession();
+  if(hit){
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(records)); localStorage.setItem(TARGET_KEY, JSON.stringify(target)); }catch(e){}
+    ensureBJRecords();
+    applyAuthUI(); setSyncStatus(true);
+  }else{
+    // 云端无数据：用本地/种子初始化并写回云端
+    load(); ensureBJRecords(); applyAuthUI();
+    dbSave().then(ok=> setSyncStatus(ok));
+  }
+}
+/* 应用登录态：未登录→登录遮罩；已登录→账号标签 + 渲染 */
+function applyAuthUI(){
+  const label=$('#accountLabel'); const btn=$('#btnAccount');
+  if(curUser){
+    const roleTxt=curUser.role==='admin'?'管理员':'成员';
+    if(label) label.textContent=curUser.name||curUser.username;
+    if(btn){ btn.title=curUser.username+'（'+roleTxt+'）'; btn.classList.add('logged'); }
+    $('#loginMask').classList.remove('show');
+  } else {
+    if(label) label.textContent='登录';
+    if(btn){ btn.title='登录'; btn.classList.remove('logged'); }
+    $('#loginMask').classList.add('show');
+  }
+  syncAllCompanySelects();
+  renderAll();
+}
+
+/* ---------- 年度目标（业绩=销售额=上游应收金额） ---------- */
+const TARGET_KEY="wb_trade_v3_target";
+let target={years:{}};
+let annualYear=String(NOW.getFullYear());
+function loadTarget(){ try{ const raw=localStorage.getItem(TARGET_KEY); if(raw){ const d=JSON.parse(raw); if(d&&d.years) return d; } }catch(e){} return {years:{}}; }
+function saveTarget(){ try{ localStorage.setItem(TARGET_KEY, JSON.stringify(target)); }catch(e){} if(dbAvailable()){ dbSave().catch(()=>{}); } }
+/* 新模型：target.years[年][公司][月份]=金额 */
+function getTarget(yr,company,month){ const cm=((target.years[yr]||{})[company]||{}); return num(cm[month]); }
+function setTarget(yr,company,month,val){
+  if(!target.years[yr]) target.years[yr]={};
+  if(!target.years[yr][company]) target.years[yr][company]={};
+  if(num(val)>0) target.years[yr][company][month]=num(val);
+  else delete target.years[yr][company][month];
+}
+function setCompanyYearTarget(yr,company,total){
+  if(!(num(total)>0)) return;
+  if(!target.years[yr]) target.years[yr]={};
+  if(!target.years[yr][company]) target.years[yr][company]={};
+  const per=Math.round(num(total)/12), rem=num(total)-per*12;
+  for(let m=1;m<=12;m++) target.years[yr][company][yr+'-'+String(m).padStart(2,'0')]=per;
+  target.years[yr][company][yr+'-12']+=rem;
+  saveTarget();
+}
+function companyYearTarget(yr,company){ const cm=((target.years[yr]||{})[company]||{}); return Object.values(cm).reduce((s,v)=>s+num(v),0); }
+function yearTargetTotal(yr){ return COMPANIES.reduce((s,c)=>s+companyYearTarget(yr,c.name),0); }
+function monthTarget(ym){ const yr=ym.slice(0,4); return COMPANIES.reduce((s,c)=>s+getTarget(yr,c.name,ym),0); }
+function yearActual(yr){ return visibleRecords().filter(r=>monthOf(r.月份).startsWith(yr)).reduce((s,r)=>s+num(r.上游应收金额),0); }
+function monthActual(ym){ return visibleRecords().filter(r=>monthOf(r.月份)===ym).reduce((s,r)=>s+num(r.上游应收金额),0); }
+/* 当前 Tab 对应的公司（用于年度目标区域按公司筛选） */
+function currentCompanyForTarget(){
+  if(curFilter==='all'||!curFilter) return null;
+  // 精确/子串/模糊匹配（与 renderOverview 逻辑一致）
+  let co=COMPANIES.find(c=>c.name===curFilter||c.name.includes(curFilter)||curFilter.includes(c.name));
+  if(co) return co.name;
+  const tries=[curFilter, curFilter.replace(/^深圳/,'深圳宽东方'), curFilter.replace(/^北京/,'北京宽东方'),
+    '深圳宽东方'+curFilter.replace(/^深圳/,''), '北京宽东方'+curFilter.replace(/^北京/,'')];
+  co=COMPANIES.find(c=>tries.includes(c.name));
+  if(co) return co.name;
+  co=COMPANIES.find(c=>c.name.replace(/宽东方/,'')===curFilter);
+  return co?co.name:null;
+}
+/* 按公司筛选的年度实际/月度实际 */
+function yearActualForCompany(yr,coName){
+  const recs = coName ? visibleRecords().filter(r=>r.归属公司===coName||r.板块===coName) : visibleRecords();
+  return recs.filter(r=>monthOf(r.月份).startsWith(yr)).reduce((s,r)=>s+num(r.上游应收金额),0);
+}
+function monthActualForCompany(ym,coName){
+  const recs = coName ? visibleRecords().filter(r=>r.归属公司===coName||r.板块===coName) : visibleRecords();
+  return recs.filter(r=>monthOf(r.月份)===ym).reduce((s,r)=>s+num(r.上游应收金额),0);
+}
+/* 按公司的月度目标（合计或单公司） */
+function monthTargetForCompany(m,coName){
+  if(!coName) return monthTarget(m);
+  const yr=m.slice(0,4);
+  const cm=((target.years[yr]||{})[coName]||{});
+  return num(cm[m])||0;
+}
+function companyYearActual(yr){ const map={}; visibleRecords().filter(r=>monthOf(r.月份).startsWith(yr)).forEach(r=>{ const k=r.上游公司; if(!k) return; map[k]=(map[k]||0)+num(r.上游应收金额); }); return Object.entries(map).sort((a,b)=>b[1]-a[1]); }
+/* 旧模型（全局月度目标）迁移为 _all 虚拟公司，保留参考值，不丢数据 */
+function migrateTarget(){
+  if(!target||!target.years) return;
+  for(const yr of Object.keys(target.years)){
+    const d=target.years[yr];
+    if(!d || typeof d!=='object') continue;
+    // 检测：值含 "2026-01" 形式键 → 旧结构
+    const monthKeys=Object.keys(d).filter(k=>/^\d{4}-\d{2}$/.test(k));
+    if(monthKeys.length>0 && !d._all){
+      target.years[yr] = { _all: Object.assign({}, d), ...d };
+    }
+  }
+}
+
+/* ---------- 看板 ---------- */
+function renderOverview(){
+  const ds = filtered();
+  // 6 卡片：第一行年度目标对比，第二行业务实际，均跟随筛选（月份/板块）
+  const scope = curMonth ? ds : ds.filter(r=>monthOf(r.月份).startsWith(annualYear));
+  const ssum=f=>scope.reduce((s,r)=>s+num(r[f]),0);
+  const upR=ssum('上游应收金额'), walked=ssum('上游已走金额'), downP=ssum('下游应付金额'), grossSum=scope.reduce((s,r)=>s+gross(r),0);
+  const unwalk=scope.reduce((s,r)=>s+unwalked(r),0); const owed=scope.filter(r=>r.交易情况==='欠款'||unwalked(r)>0.001).length;
+  let om = curFilter==='all'?'全部板块':curFilter;
+  if(curStatus!=='all') om += ' · '+curStatus;
+  if(curMonth) om += ' · '+curMonth;
+  if(curSearch) om += ' · 搜「'+curSearch+'」';
+  $('#ovMeta').textContent = om;
+  // 计划金额（跟随筛选）：选月→当月目标，选公司Tab→该公司全年目标，总览→全部合计
+  const planYr = curMonth ? curMonth.slice(0,4) : annualYear;
+  let plan;
+  if(curMonth){
+    plan = monthTarget(curMonth);
+  } else if(curFilter !== 'all'){
+    // 从板块/Tab名映射到公司全名（用于查目标）
+    // 板块"深圳智造" → 公司"深圳宽东方智造"；板块"北京光呐" → 公司"北京光呐"（精确匹配）
+    const matchedCo = (function(f){
+      // 精确匹配或子串匹配（处理"北京宽东方科技"等全名Tab）
+      let co=COMPANIES.find(c=>c.name===f||c.name.includes(f)||f.includes(c.name));
+      if(co) return co;
+      // 模糊匹配：尝试在地区前缀后插入/删除"宽东方"（处理简称Tab如"深圳智造"）
+      const tries=[f, f.replace(/^深圳/,'深圳宽东方'), f.replace(/^北京/,'北京宽东方'),
+        '深圳宽东方'+f.replace(/^深圳/,''), '北京宽东方'+f.replace(/^北京/,'')];
+      co=COMPANIES.find(c=>tries.includes(c.name));
+      if(co) return co;
+      // 最后回退：公司名去掉"宽东方"后对比
+      return COMPANIES.find(c=>c.name.replace(/宽东方/,'')===f)||(null);
+    })(curFilter);
+    plan = matchedCo ? companyYearTarget(planYr, matchedCo.name) : yearTargetTotal(planYr);
+  } else {
+    plan = yearTargetTotal(planYr);
+  }
+  const rate = plan>0 ? Math.round(upR/plan*100) : 0;
+  const scopeLabel = curMonth ? curMonth : (annualYear+' 年'+(curFilter!=='all'?(' · '+curFilter):''));
+  const row1 = `
+    <div class="kpi blue"><div class="k-label">计划金额</div><div class="k-val">${plan>0?fmt(plan):'未设定'}</div><div class="k-sub">${curMonth?'当月目标':(annualYear+' 全年目标'+(curFilter!=='all'?' · '+curFilter:''))}</div></div>
+    <div class="kpi green"><div class="k-label">完成金额（实际销售）</div><div class="k-val">${fmt(upR)}</div><div class="k-sub">上游应收${downP>0?' · 下游应付 '+fmt(downP):''}</div></div>
+    <div class="kpi amber"><div class="k-label">完成率</div><div class="k-val">${rate}%</div><div class="k-sub">完成 ${fmt(upR)} / 计划 ${plan>0?fmt(plan):'—'}</div>${plan>0?`<div class="k-bar"><i style="width:${Math.min(100,rate)}%"></i></div>`:''}</div>`;
+  const row2 = `
+    <div class="kpi blue"><div class="k-label">${curMonth?'当月实际销售金额':'今年实际销售金额'}</div><div class="k-val">${fmt(upR)}</div><div class="k-sub">上游应收合计${downP>0?' · 下游应付 '+fmt(downP):''}</div></div>
+    <div class="kpi green"><div class="k-label">已结算金额</div><div class="k-val">${fmt(walked)}</div><div class="k-sub">整体结算率 ${settledRate(scope)}%</div></div>
+    <div class="kpi red"><div class="k-label">待结算金额</div><div class="k-val">${fmt(unwalk)}</div><div class="k-sub">${owed} 笔未结清</div></div>`;
+  $('#kpiGrid').innerHTML = `
+    <div class="kpi-cap"><span class="dot"></span>年度目标对比 · ${scopeLabel}</div>
+    <div class="kpi-grid">${row1}</div>
+    <div class="kpi-cap"><span class="dot"></span>业务实际 · ${scopeLabel}</div>
+    <div class="kpi-grid">${row2}</div>`;
+  const errs=ds.filter(r=>checkRecord(r).some(x=>x[0]==='err')).length;
+  const warns=ds.filter(r=>checkRecord(r).some(x=>x[0]==='warn')).length;
+  $('#kpiHealth').innerHTML = (errs||warns)
+    ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+        ${errs?`<span class="dh bad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>${errs} 笔异常</span>`:''}
+        ${warns?`<span class="dh" style="background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn-line)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>${warns} 笔待核对</span>`:''}
+        <span class="dh" style="background:#f1f5f9;color:var(--sub);border:none;cursor:pointer;font-weight:600" onclick="document.getElementById('secDataTodo').style.display='';document.getElementById('secDataTodo').scrollIntoView({behavior:'smooth'})">查看详情 →</span>
+      </div>`
+    : `<div style="margin-top:14px"><span class="dh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>数据校验全部正常 · 无异常记录</span></div>`;
+  /* charts removed */
+}
+function drawTrend(ds){
+  const map={}; ds.forEach(r=>{ const m=monthOf(r.月份); if(!m) return; const a=map[m]||{r:0,w:0}; a.r+=num(r.上游应收金额); a.w+=num(r.上游已走金额); map[m]=a; });
+  const months=Object.keys(map).sort(); const el=$('#trendChart');
+  if(!months.length){ el.innerHTML='<div style="color:var(--sub);font-size:13px;padding:20px;text-align:center">暂无数据</div>'; return; }
+  const W=640,H=200,pad=30; const rate=m=> map[m].r>0? map[m].w/map[m].r*100 : 0;
+  const x=i=> pad+i*((W-pad*2)/(months.length-1||1)); const y=v=> H-pad - v/100*(H-pad*2);
+  let g=''; for(let k=0;k<=4;k++){ const vv=25*k, yy=y(vv); g+=`<line x1="${pad}" y1="${yy}" x2="${W-pad}" y2="${yy}" stroke="#eef2f7"/><text x="2" y="${yy+4}" font-size="9" fill="#9aa3af">${vv}%</text>`; }
+  let d=''; months.forEach((m,i)=> d+=(i?'L':'M')+x(i)+' '+y(rate(m)));
+  let pts=''; months.forEach((m,i)=> pts+=`<circle cx="${x(i)}" cy="${y(rate(m))}" r="2.8" fill="#3b5bdb"/>`);
+  let xl=''; months.forEach((m,i)=>{ if(months.length<=14||i%Math.ceil(months.length/8)===0) xl+=`<text x="${x(i)}" y="${H-10}" font-size="9" fill="#9aa3af" text-anchor="middle">${m.slice(2)}</text>`; });
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${g}<path d="${d}" fill="none" stroke="#3b5bdb" stroke-width="2.6" stroke-linejoin="round"/>${pts}${xl}</svg>`;
+}
+function drawDonut(all){
+  const map={}; all.forEach(r=>{ const k=r.板块||'其他'; map[k]=(map[k]||0)+num(r.上游应收金额); });
+  const keys=Object.keys(map), total=keys.reduce((s,k)=>s+map[k],0); const el=$('#pieChart'), lg=$('#pieLegend');
+  if(!total){ el.innerHTML='<div style="color:var(--sub);font-size:13px;padding:20px;text-align:center">暂无数据</div>'; lg.innerHTML=''; return; }
+  const colors=['#3b5bdb','#2f9e44','#e8590c','#7048e8']; const cx=85,cy=85,r=66; let a0=-Math.PI/2,arcs=''; const leg=[];
+  keys.forEach((k,i)=>{ const frac=map[k]/total, a1=a0+frac*Math.PI*2; const x0=cx+r*Math.cos(a0),y0=cy+r*Math.sin(a0),x1=cx+r*Math.cos(a1),y1=cy+r*Math.sin(a1);
+    arcs+=`<path d="M${cx} ${cy} L${x0} ${y0} A${r} ${r} 0 ${frac>0.5?1:0} 1 ${x1} ${y1} Z" fill="${colors[i%4]}"/>`; leg.push(`<span><i style="background:${colors[i%4]}"></i>${esc(k)} ${(frac*100).toFixed(0)}%</span>`); a0=a1; });
+  el.innerHTML=`<svg viewBox="0 0 170 170" width="158" height="158" style="display:block;margin:0 auto">${arcs}<circle cx="${cx}" cy="${cy}" r="38" fill="#fff"/><text x="${cx}" y="${cy-3}" text-anchor="middle" font-size="10" fill="#64748b">业务规模</text><text x="${cx}" y="${cy+13}" text-anchor="middle" font-size="12" font-weight="800" fill="#1e293b">${fmt(total)}</text></svg>`; lg.innerHTML=leg.join('');
+}
+/* ---------- 年度目标渲染 ---------- */
+function drawRing(el,pct){ const r=52,c=2*Math.PI*r, off=c*(1-Math.min(100,Math.max(0,pct))/100);
+  const col=pct>=100?'#2f9e44':(pct>=60?'#3b5bdb':'#fab005');
+  el.innerHTML=`<svg viewBox="0 0 130 130" width="130" height="130"><circle cx="65" cy="65" r="${r}" fill="none" stroke="#eef2f7" stroke-width="12"/><circle cx="65" cy="65" r="${r}" fill="none" stroke="${col}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 65 65)"/></svg>`; }
+function renderAnnual(){
+  const yr=annualYear; $('#anYearLabel').textContent=yr;
+  const coName = currentCompanyForTarget();
+  // 跟随 Tab：选公司→只看该公司；总览→全部合计
+  const tTotal = coName ? companyYearTarget(yr, coName) : yearTargetTotal(yr);
+  const aTotal = yearActualForCompany(yr, coName);
+  const rate=tTotal>0?Math.round(aTotal/tTotal*100):0;   const gap=tTotal-aTotal;
+  const remainMonths = yr<NOW.getFullYear()? 0 : Math.max(0, 12-NOW.getMonth());
+  drawRing($('#anRing'), rate);
+  $('#anRingCenter').innerHTML=`<div class="rc-p">${rate}%</div><div class="rc-s">年度完成率</div>`;
+  // 标签显示当前筛选范围
+  const scopeTag = coName ? (' · '+coName) : '';
+  $('#anStats').innerHTML=`
+    <div class="as"><div class="as-l">全年目标${scopeTag}</div><div class="as-v">${tTotal>0?fmt(tTotal):'未设定'}</div></div>
+    <div class="as"><div class="as-l">今年实际销售额${scopeTag}</div><div class="as-v ${tTotal>0&&aTotal>=tTotal?'pos':''}">${fmt(aTotal)}</div></div>
+    <div class="as"><div class="as-l">${gap>=0?'还差目标':'已超额'}</div><div class="as-v ${gap>=0?'':'pos'}">${fmt(Math.abs(gap))}</div></div>
+    <div class="as"><div class="as-l">${gap>0?(remainMonths>0?'月均需完成':'已无月份'):'全年已达标'}</div><div class="as-v">${gap>0&&remainMonths>0?fmt(Math.round(gap/remainMonths)):'—'}</div></div>`;
+  renderAnMonth(yr, coName); renderAnCompany(yr);
+  // 年份下拉
+  const yrs=[...new Set([String(NOW.getFullYear()), ...visibleRecords().map(r=>monthOf(r.月份).slice(0,4)).filter(Boolean), ...Object.keys(target.years)])].filter(Boolean).sort((a,b)=>b-a);
+  const sel=$('#anYear'); sel.innerHTML=yrs.map(y=>`<option value="${y}">${y} 年</option>`).join(''); sel.value=yr;
+}
+function renderAnMonth(yr, coName){
+  const el=$('#anMonthChart'); const W=640,H=210,pad={l:30,r:10,t:14,b:24};
+  const months=[]; for(let i=1;i<=12;i++) months.push(yr+'-'+String(i).padStart(2,'0'));
+  const acts=months.map(m=>({m, t:monthTargetForCompany(m, coName), a:monthActualForCompany(m, coName)}));
+  const max=Math.max(1,...acts.map(x=>Math.max(x.t,x.a)));
+  const gapw=(W-pad.l-pad.r)/12, bw=gapw*0.30;
+  let g=''; for(let k=0;k<=4;k++){ const v=max*k/4, yy=H-pad.b-v/max*(H-pad.t-pad.b); g+=`<line x1="${pad.l}" y1="${yy}" x2="${W-pad.r}" y2="${yy}" stroke="#eef2f7"/><text x="2" y="${yy+4}" font-size="9" fill="#9aa3af">${(v/10000).toFixed(0)}w</text>`; }
+  let bars=''; acts.forEach((x,i)=>{ const cx=pad.l+i*gapw+gapw/2;
+    const yT=H-pad.b-(x.t/max)*(H-pad.t-pad.b), yA=H-pad.b-(x.a/max)*(H-pad.t-pad.b);
+    const cur=x.m===curMonthStr();
+    bars+=`<rect x="${(cx-bw-3).toFixed(1)}" y="${yT.toFixed(1)}" width="${bw}" height="${(H-pad.b-yT).toFixed(1)}" fill="#fab005" rx="2" opacity="${cur?1:0.65}"/>`;
+    bars+=`<rect x="${(cx+3).toFixed(1)}" y="${yA.toFixed(1)}" width="${bw}" height="${(H-pad.b-yA).toFixed(1)}" fill="#3b5bdb" rx="2" ${cur?'stroke="#1e293b" stroke-width="1.2"':''}/>`;
+    bars+=`<text x="${cx.toFixed(1)}" y="${H-8}" font-size="8.5" fill="#9aa3af" text-anchor="middle">${x.m.slice(5)}</text>`;
+  });
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${g}${bars}</svg>`;
+}
+function renderAnCompany(yr){
+  const el=$('#anCompany'); const rows=companyYearActual(yr).slice(0,12);
+  if(!rows.length){ el.innerHTML='<div class="empty">该年暂无销售记录</div>'; return; }
+  const max=rows[0][1]||1;
+  el.innerHTML=rows.map(([nm,v])=>{ const pct=Math.max(3,v/max*100); return `<div class="bar-row"><div class="bl"><span class="nm" title="${esc(nm)}">${esc(nm)}</span><span class="vv">${fmt(v)}</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct.toFixed(1)}%"></div></div></div>`; }).join('');
+}
+function renderPrio(){
+  const list=filtered().filter(r=> r.交易情况==='欠款'||unwalked(r)>0.001)
+    .map(r=>({r, age:ageMonths(r), un:unwalked(r), anom:isAnom(r)}))
+    .sort((a,b)=> (b.anom-a.anom) || (b.un*(1+b.age/12) - a.un*(1+a.age/12)) );
+  $('#prioMeta').textContent = list.length? (list.length+' 笔待跟进'+(list.some(x=>x.anom)?'，含异常'+list.filter(x=>x.anom).length+'笔':'')) : '全部已结清';
+  const card=$('#prioCard'); if(!list.length){ card.innerHTML='<div class="empty">没有待结算业务，账款已全部理清。</div>'; return; }
+  card.innerHTML=list.map((it,idx)=>{ const r=it.r; return `<div class="prio-item"><div class="prio-rank">${idx+1}</div>
+    <div class="prio-main"><div class="p1">${esc(r.上游公司||'未填上游')} → ${esc(r.下游公司||'未填下游')}${it.anom?'<span class="tag anom">异常</span>':''}${it.age>0?'<span class="tag age">账龄'+it.age+'月</span>':''}</div>
+      <div class="p2">${monthOf(r.月份)||'未设月份'} · ${esc(r.板块)} · ${esc(r.交易情况||'欠款')}</div></div>
+    <div class="prio-amt"><div class="a1">${fmt(it.un)}</div><div class="a2">待结算（收${fmt(upUn(r))}/付${fmt(downUn(r))}）</div></div>
+    <button class="prio-done" data-id="${r.id}">标记结清</button></div>`; }).join('');
+  card.querySelectorAll('.prio-done').forEach(b=> b.onclick=()=>settle(b.dataset.id));
+}
+function settle(id){ const r=records.find(x=>x.id===id); if(!r) return; r.上游已走金额=r.上游应收金额; r.下游已走金额=r.下游应付金额; r.交易情况='已完成'; save(); renderAll(); toast('已标记结清：'+(r.上游公司||'')); }
+function renderParty(){
+  const build=field=>{ const map={}; filtered().forEach(r=>{ const k=r[field]; if(!k) return; const o=map[k]||{total:0,walked:0}; o.total+=num(r[field==='上游公司'?'上游应收金额':'下游应付金额']); o.walked+=num(r[field==='上游公司'?'上游已走金额':'下游已走金额']); map[k]=o; });
+    return Object.entries(map).sort((a,b)=>b[1].total-a[1].total).slice(0,6); };
+  const render=(elId,rows)=>{ const el=$(elId); if(!rows.length){ el.innerHTML='<div style="color:var(--sub);font-size:13px">暂无数据</div>'; return; }
+    const max=rows[0][1].total||1; el.innerHTML=rows.map(([nm,o])=>{ const un=o.total-o.walked; const pct=Math.max(4,o.total/max*100);
+      return `<div class="bar-row"><div class="bl"><span class="nm" title="${esc(nm)}">${esc(nm)}</span><span class="vv">${fmt(o.total)}</span></div><div class="bar-track"><div class="bar-fill ${un>0.001?'un':''}" style="width:${pct}%"></div></div>${un>0.001?`<div style="font-size:11px;color:var(--danger);margin-top:3px">待结算 ${fmt(un)}</div>`:''}</div>`; }).join(''); };
+  render('#partyUp', build('上游公司')); render('#partyDown', build('下游公司'));
+}
+function renderLedger(){
+  let list=filtered();
+  const groups={}; list.forEach(r=>{ const m=monthOf(r.月份)||'未设月份'; (groups[m]=groups[m]||[]).push(r); });
+  const months=Object.keys(groups).sort((a,b)=>b.localeCompare(a)); const root=$('#ledgerGroups');
+  if(!months.length){ root.innerHTML='<div class="empty">没有匹配的记录</div>'; return; }
+  root.innerHTML=months.map(m=>{ const rs=groups[m].slice().sort((a,b)=>(b.上游应收金额||0)-(a.上游应收金额||0));
+    const gTotal=rs.reduce((s,r)=>s+gross(r),0); const gUn=rs.reduce((s,r)=>s+unwalked(r),0);
+    return `<div class="grp"><div class="grp-head"><span class="m">${m}</span><span class="pill">${rs.length} 笔</span>
+      <span class="right">毛利 ${fmt(gTotal)}${gUn>0.001?` · 待结算 <b style="color:var(--danger)">${fmt(gUn)}</b>`:''}</span></div>
+      ${rs.map(r=>{ const g=gross(r); return `<div class="rec"><div class="rc-top"><div><div class="rc-title">${esc(r.上游公司||'未填上游')}<span class="seg-tag">${esc(r.板块||'')}</span>${r.归属公司?`<span class="seg-tag owner">${esc(r.归属公司)}</span>`:''}</div>
+        <div class="rc-sub">→ ${esc(r.下游公司||'未填下游')}${r.合同编号?` · <span class="ht-no">${esc(r.合同编号)}</span>`:''}${isAnom(r)?' <span class="tag anom">异常</span>':''}</div></div>
+        <span class="badge ${STATUS[r.交易情况]||'b-todo'}">${esc(r.交易情况||'未启动')}</span></div>
+        ${checksHTML(r)}
+        <div class="rc-grid"><div><div class="l">上游应收</div><div class="v">${fmt(r.上游应收金额)}</div></div><div><div class="l">上游已走</div><div class="v">${fmt(r.上游已走金额)}</div></div>
+          <div><div class="l">下游应付</div><div class="v">${fmt(r.下游应付金额)}</div></div><div><div class="l">下游已走</div><div class="v">${fmt(r.下游已走金额)}</div></div>
+          <div><div class="l">估算毛利</div><div class="v ${g<0?'neg':'pos'}">${fmt(g)}</div></div><div><div class="l">待结算</div><div class="v neg">${fmt(unwalked(r))}</div></div>
+          <div><div class="l">结算率</div><div class="v">${settledRate([r])}%</div></div><div><div class="l">账龄</div><div class="v">${ageMonths(r)}月</div></div></div>
+        <div class="rc-ops"><button class="btn ghost" data-edit="${r.id}">编辑</button>${ (r.附件&&r.附件.length)?`<button class="btn ghost att-btn" data-att="${r.id}">${ATT_ICON} 附件(${r.附件.length})</button>`:'' }<button class="btn danger" data-del="${r.id}">删除</button></div></div>`; }).join('')}</div>`; }).join('');
+  root.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openSheet(b.dataset.edit));
+  root.querySelectorAll('[data-att]').forEach(b=>b.onclick=()=>openAttachmentViewer(b.dataset.att));
+  root.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>del(b.dataset.del));
+}
+/* ---------- 本月业务进展（经营看板月度筛选下的明细 + 跟进提示） ---------- */
+function renderProgress(){
+  const extra=$('#progExtra'); if(!extra) return;
+  const sel=$('#ovMonth');
+  const months=[...new Set(visibleRecords().map(r=>monthOf(r.月份)).filter(Boolean))].sort().reverse();
+  const cm=curMonthStr();
+  if(sel){
+    sel.innerHTML='<option value="">全部（整体）</option>'+months.map(m=>`<option value="${m}">${m}</option>`).join('');
+    sel.value=curMonth;
+    sel.onchange=()=>{ curMonth=sel.value; renderAll(); };
+  }
+  if($('#ovCurTag')) $('#ovCurTag').style.display=(curMonth && curMonth===cm)?'':'none';
+  if($('#ovMonthHint')) $('#ovMonthHint').textContent = curMonth? ('已筛选 '+curMonth+' · 看板与明细均按此月') : ('默认整体 · 共 '+months.length+' 个月有业务，可选月查看当月进展');
+  if($('#progListTitle')) $('#progListTitle').textContent = curMonth? (curMonth+' 进展明细') : '进展明细';
+  if(!curMonth){ extra.style.display='none'; return; }
+  extra.style.display='';
+  const ym=curMonth;
+  const ds=visibleRecords().filter(r=>monthOf(r.月份)===ym);
+  const stClass=s=> s==='已完成'?'st-done':(s==='欠款'?'st-owed':'st-ing');
+  const rows=ds.slice().sort((a,b)=>(num(b.上游应收金额)||0)-(num(a.上游应收金额)||0));
+  const list=$('#progList'); if(list) list.innerHTML = rows.length? rows.map(r=>{
+    const follow = r.交易情况==='欠款'||unwalked(r)>0.001;
+    return `<div class="prog-item ${follow?'follow':''}">
+      <div class="prog-top"><span class="prog-co">${esc(r.上游公司||'未填')} → ${esc(r.下游公司||'未填')}</span>
+        <span class="prog-st ${stClass(r.交易情况)}">${esc(r.交易情况||'—')}</span></div>
+      <div class="prog-mid">${monthOf(r.月份)} · ${esc(r.板块||'')}</div>
+      <div class="prog-amts">
+        <span>应收 ${fmt(num(r.上游应收金额))}</span>
+        <span class="ok">回款 ${fmt(num(r.上游已走金额))}</span>
+        <span class="pay">付款 ${fmt(num(r.下游已走金额))}</span>
+        <span class="inv">开票 ${fmt(num(r.上游开票金额)+num(r.下游开票金额))}</span>
+      </div>
+      ${follow?`<div class="prog-flag follow">待跟进：待结算 ${fmt(unwalked(r))}</div>`:`<div class="prog-flag ok">已结清</div>`}
+    </div>`;
+  }).join('') : '<div class="empty">本月暂无业务记录</div>';
+  const followList=ds.filter(r=>r.交易情况==='欠款'||unwalked(r)>0.001||isAnom(r));
+  const fw=$('#progFollow'); if(fw) fw.innerHTML = followList.length? followList.map(r=>`<div class="todo-item ${isAnom(r)?'err':'warn'}"><span class="todo-ic"></span><span class="todo-tx">${esc(r.上游公司||'')} → ${esc(r.下游公司||'')}：${isAnom(r)?'数据异常':('待结算 '+fmt(unwalked(r)))}</span><button class="todo-go" data-id="${r.id}">去处理</button></div>`).join('') : '<div class="empty">本月无待跟进事项，进展良好</div>';
+  if(fw) fw.querySelectorAll('.todo-go').forEach(b=> b.onclick=()=>openSheet(b.dataset.id));
+}
+/* ---------- 数据待办（异常/亏损/缺字段/未同步归档 聚合） ---------- */
+function renderDataTodo(){
+  const el=$('#dataTodoBody'); if(!el) return;
+  const ds=filtered();
+  const errs=ds.filter(r=>checkRecord(r).some(x=>x[0]==='err'));
+  const warns=ds.filter(r=>{ const c=checkRecord(r); return !c.some(x=>x[0]==='err') && c.some(x=>x[0]==='warn'); });
+  const items=[];
+  errs.forEach(r=> items.push({lv:'err',t:`异常/亏损：${r.上游公司||r.下游公司||'未命名'}${r.月份?'（'+monthOf(r.月份)+'）':''}`,id:r.id}));
+  warns.forEach(r=> items.push({lv:'warn',t:`待核对：${r.上游公司||r.下游公司||'未命名'}${r.月份?'（'+monthOf(r.月份)+'）':''}`,id:r.id}));
+  if(!items.length){ el.innerHTML='<div class="empty">无需核对，数据状态良好 ✓</div>'; return; }
+  el.innerHTML=items.map(it=>`<div class="todo-item ${it.lv}"><span class="todo-ic"></span><span class="todo-tx">${esc(it.t)}</span>${it.id?`<button class="todo-go" data-id="${it.id}">去处理</button>`:''}</div>`).join('');
+  el.querySelectorAll('.todo-go').forEach(b=> b.onclick=()=>{ if(b.dataset.id) openSheet(b.dataset.id); });
+}
+
+/* ---------- 智能录入：合同审核 ---------- */
+const CHK_ICON={pass:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',fail:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5M12 17h.01"/></svg>'};
+/* 流量费自动计算：仅「智造」板块按销售额 × 6‰；新能源等手动填 */
+function autoFlowFee(upAmtId, feeId, blockId){
+  const block=($('#'+blockId).value||'').trim();
+  if(!/智造/.test(block)) return;
+  const up=num($('#'+upAmtId).value); const el=$('#'+feeId);
+  if(up>0){ const fee=Math.round(up*0.006*100)/100; if(!el.value) el.value=fee; }
+}
+function contractReview(){
+  autoFlowFee('c_上游应收金额','c_流量费','c_板块');
+  const up=$('#c_上游公司').value.trim(), down=$('#c_下游公司').value.trim();
+  const upAmt=num($('#c_上游应收金额').value), downAmt=num($('#c_下游应付金额').value);
+  const flowFee=num($('#c_流量费').value);
+  const profit=upAmt-downAmt-flowFee-(num($('#c_税金').value)||0), margin=upAmt>0?Math.round(profit/upAmt*100):0;
+  $('#cProfit').textContent= (upAmt||flowFee)? fmt(profit):'—';
+  $('#cMargin').textContent= upAmt? margin+'%':'—';
+  const checks=[];
+  checks.push({ok: up&&down, warn:false, t:'上下游公司均已填写', d: up&&down? `${up} / ${down}` : '请补全双方主体'});
+  checks.push({ok: upAmt>0, warn:false, t:'上游应收金额 > 0 且为有效数字', d: upAmt? fmt(upAmt):'未填或无效'});
+  checks.push({ok: downAmt>0, warn:false, t:'下游应付金额 > 0 且为有效数字', d: downAmt? fmt(downAmt):'未填或无效'});
+  checks.push({ok:true, warn: profit<0, t:'毛利估算', d: profit? (profit<0?'注意：此单可能为亏损 '+fmt(profit):'盈利 '+fmt(profit)+'（'+margin+'%）') : '待填金额'});
+  const term=$('#c_开票条款').value.trim();
+  checks.push({ok: !!term, warn:false, t:'开票条款已明确', d: term||'建议填写，影响税务与回款'});
+  const ym=$('#c_月份').value;
+  checks.push({ok:!!ym, warn:false, t:'合同月份已填', d: ym||'用于入账与账龄'});
+  const allOk=checks.every(c=>c.ok && !c.warn);
+  $('#chkList').innerHTML=checks.map(c=>`<div class="chk ${c.ok?(c.warn?'warn':'pass'):'fail'}"><div class="ic">${c.ok?(c.warn?CHK_ICON.warn:CHK_ICON.pass):CHK_ICON.fail}</div><div class="tx"><b>${c.t}</b><div style="color:var(--sub);font-size:12px">${esc(c.d)}</div></div></div>`).join('');
+  $('#cRecord').disabled=!allOk; $('#cRecord').style.opacity=allOk?'1':'.5';
+  return {up,down,upAmt,downAmt,profit,ym,allOk};
+}
+function autoContractNo(ym){ ym=(ym||'').replace(/[^0-9]/g,'').slice(0,6); if(!ym) return ''; let max=0; records.forEach(r=>{ const m=/^HT(\d{6})(\d{3})$/.exec((r.合同编号||'').trim()); if(m&&m[1]===ym) max=Math.max(max,+m[2]); }); return 'HT'+ym+('00'+(max+1)).slice(-3); }
+function contractRecord(){
+  const c=contractReview(); if(!c.allOk){ toast('审核未通过，请补全必填项'); return; }
+  const atts=pendingContractFile?[pendingContractFile]:[];
+  if(atts.length) storageHeadsUp();
+  const rec={ id:'r'+Date.now(), 归属公司:($('#c_归属公司').value||currentCompanyDefault()), 板块:($('#ingestBlock').value||$('#c_板块').value||blocksList()[0]||'未分类'), 月份:(c.ym||'')+'-01', 上游公司:c.up, 下游公司:c.down,
+    上游应收金额:c.upAmt, 上游已走金额:0, 下游应付金额:c.downAmt, 下游已走金额:0,
+    上游开票金额:'', 下游开票金额:'', 税金:num($('#c_税金').value)||'', 流量费:flowFee||'', 合同编号:($('#c_合同编号').value.trim()||autoContractNo(c.ym||$('#c_月份').value)), 交易情况:'欠款', 备注:'合同入账·'+($('#c_账期').value.trim()||'—'), 来源:'合同', 附件:atts };
+  records.push(rec); save(); renderAll();
+  toast('已入台账：'+c.up+'，毛利 '+fmt(c.profit)+'，进入催款队列'+(atts.length?'，合同已保存':'') );
+  ['c_上游公司','c_下游公司','c_上游应收金额','c_下游应付金额','c_流量费','c_税金','c_账期','c_开票条款','c_月份'].forEach(id=>$('#'+id).value='');
+  pendingContractFile=null; renderContractFileHint(); contractReview();
+}
+$('#c_上游公司').oninput=contractReview; $('#c_下游公司').oninput=contractReview; $('#c_板块').oninput=contractReview; $('#c_上游应收金额').oninput=contractReview;
+$('#c_下游应付金额').oninput=contractReview; $('#c_流量费').oninput=contractReview; $('#c_税金').oninput=contractReview;
+$('#c_账期').oninput=contractReview; $('#c_开票条款').oninput=contractReview; $('#c_月份').oninput=contractReview;
+$('#cRecord').onclick=contractRecord; $('#cSkip').onclick=()=>{ ['c_上游公司','c_下游公司','c_上游应收金额','c_下游应付金额','c_流量费','c_税金','c_账期','c_开票条款','c_月份'].forEach(id=>$('#'+id).value=''); pendingContractFile=null; renderContractFileHint(); contractReview(); toast('已清空，未记录'); };
+
+/* ---------- 智能录入：银行流水（上传 Excel/CSV 自动匹配） ---------- */
+function csvToRows(text){
+  const lines=text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l!=='');
+  return lines.map(line=>{ const out=[]; let cur='', q=false;
+    for(let i=0;i<line.length;i++){ const ch=line[i];
+      if(q){ if(ch==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=ch; }
+      else { if(ch==='"') q=true; else if(ch===','){ out.push(cur); cur=''; } else if(ch==='\t'){ out.push(cur); cur=''; } else cur+=ch; } }
+    out.push(cur); return out.map(s=>s.trim()); });
+}
+function normDate(s){ if(!s) return ''; s=String(s).trim();
+  if(/^\d{4,5}(\.\d+)?$/.test(s)){ const n=parseFloat(s); if(n>40000&&n<70000){ const d=new Date((n-25569)*864e5); return d.toISOString().slice(0,10); } }
+  s=s.replace(/[年\/]/g,'-').replace(/月/g,'-').replace(/日/g,'');
+  let m=s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+  m=s.match(/(\d{1,2})-(\d{1,2})-(\d{4})/); if(m) return `${m[3]}-${pad(m[1])}-${pad(m[2])}`;
+  m=s.match(/(\d{4})(\d{2})(\d{2})/); if(m) return `${m[1]}-${m[2]}-${m[3]}`;
+  return '';
+}
+function parseAmt(s){ if(s==null) return 0; let t=String(s).trim().replace(/[¥￥,\s]/g,''); if(t==='') return 0;
+  let neg=false; if(/^\(.*\)$/.test(t)){ neg=true; t=t.slice(1,-1); } if(t.startsWith('-')) neg=true;
+  t=t.replace(/[^0-9.]/g,''); const v=parseFloat(t)||0; return neg?-v:v; }
+function pad(n){ return String(n).padStart(2,'0'); }
+function colStats(data, j){
+  let nonempty=0, dates=0, nums=0, distinct=new Set(), neg=0;
+  for(const r of data){ const c=(r[j]||'').trim(); if(c==='')continue; nonempty++;
+    if(normDate(c)) dates++;
+    const clean=c.replace(/[¥￥,\s]/g,''); const isNum=/^\(.*\)$/.test(c) || /^-?[\d.,]+$/.test(clean);
+    if(isNum){ nums++; const a=parseAmt(c); if(a<0) neg++; }
+    distinct.add(c); }
+  return {n:data.length, nonempty, dateRate: nonempty?dates/nonempty:0, numRate: nonempty?nums/nonempty:0,
+    cardinality: nonempty?distinct.size/nonempty:0, distinct: distinct.size, allPos: neg===0};
+}
+/* 数据驱动识别：不写死列位置，按列内数据特征推断角色，适配不同银行版式 */
+function detectHeaderAndMap(rows){
+  const kwAll=['日期','交易日期','记账','时间','对方','交易对手','户名','收款人','付款人','金额','交易金额','发生额','借方','贷方','收入','支出','摘要','用途','附言','备注','名称','客户','供应商'];
+  let best=-1,bestHits=0; const scan=Math.min(15,rows.length);
+  for(let i=0;i<scan;i++){ const hits=rows[i].filter(c=>kwAll.some(k=>(c||'').includes(k))).length; if(hits>bestHits){bestHits=hits;best=i;} }
+  if(best<0||bestHits<1) return {headerIdx:-1, map:guessMapByPos(rows[0]||[]), dirMode:'auto', conf:0};
+  const hdr=rows[best].map(c=>(c||'').trim());
+  const data=rows.slice(best+1);
+  const J=hdr.length; const st=[]; for(let j=0;j<J;j++) st.push(colStats(data,j));
+  const findKw=ks=>{ for(let j=0;j<J;j++){ if(ks.some(k=>hdr[j].includes(k))) return j; } return null; };
+  // 日期：可解析为日期的比例最高
+  let date=null,dr=-1; for(let j=0;j<J;j++){ if(st[j].dateRate>dr){dr=st[j].dateRate;date=j;} } if(dr<0.5) date=null;
+  const debit=findKw(['借方','借记']), credit=findKw(['贷方','贷记']), income=findKw(['收入']), expense=findKw(['支出']);
+  let dir=null; for(let j=0;j<J;j++){ if(/(方向|收付款方向|^收$|^付$|^借$|^贷$)/.test(hdr[j]) && j!==debit && j!==credit){ dir=j; break; } }
+  // 金额：数值列、非余额/账号，优先带"金额/发生额"表头且含正负
+  let amt=null,ascore=-1; for(let j=0;j<J;j++){ if(j===debit||j===credit||j===income||j===expense) continue;
+    if(/余额|账户|账号/.test(hdr[j])) continue; if(st[j].numRate<0.6) continue;
+    let sc=st[j].numRate; if(/金额|发生额|交易金额|交易额/.test(hdr[j])) sc+=0.5; if(!st[j].allPos) sc+=0.3; if(sc>ascore){ascore=sc;amt=j;} }
+  // 对方户名：含名称类关键字、排除"账号/本方/我方"列，再取列内不同值最多的（你公司名恒定→不选中，对手名多变→自动选中）
+  const selfHint=/账号名称|本方|账户名称|我方|自身|本公司/;
+  const nameKw=/对方|交易对手|户名|收款人|付款人|名称|客户|供应商|收付款方|收方|付方/;
+  const nameCands=[]; for(let j=0;j<J;j++){ if(nameKw.test(hdr[j]) && !selfHint.test(hdr[j])) nameCands.push(j); }
+  let name=null; if(nameCands.length){ let bc=-1; for(const j of nameCands){ if(st[j].cardinality>bc){bc=st[j].cardinality;name=j;} } }
+  else { let bc=-1; for(let j=0;j<J;j++){ if(st[j].numRate>0.5) continue; const cv=st[j].cardinality*0.8; if(cv>bc){bc=cv;name=j;} } }
+  const summary=findKw(['摘要','用途','附言','备注','说明','业务摘要']);
+  const map={date,name,amt,debit,credit,income,expense,dir,summary};
+  let dirMode='auto';
+  if(debit!=null && credit!=null) dirMode='bank';
+  else if(income!=null && expense!=null) dirMode='bank';
+  else if(amt!=null) dirMode=dir!=null?'auto':'sign';
+  const conf=(date!=null?1:0)+(name!=null?1:0)+(amt!=null||(debit!=null&&credit!=null)?1:0)+(summary!=null?0.5:0);
+  return {headerIdx:best, map, dirMode, conf};
+}
+function guessMapByPos(cols){ const n=cols.length; if(n>=4) return {date:0,name:1,amt:2,dir:3}; if(n>=3) return {date:0,name:1,amt:2}; return {date:0,amt:1}; }
+function describeMap(map){ const p=[]; if(map.date!=null)p.push('日期'); if(map.name!=null)p.push('对方户名'); if(map.amt!=null)p.push('金额'); if(map.debit!=null&&map.credit!=null)p.push('借/贷'); if(map.income!=null&&map.expense!=null)p.push('收/支'); if(map.dir!=null)p.push('方向'); if(map.summary!=null)p.push('摘要'); return p.join('·')||'单列'; }
+function inferDir(name){ const up=matchCompany(name,'收').length, down=matchCompany(name,'付').length; return up>down?'收':(down>up?'付':''); }
+function extractContractNo(summary, raw){
+  const txt=[summary||'', raw||''].join(' ');
+  const pats=[/HT\d{6}-?\d{2,4}/i, /PO[.\-#\s]?\d{4,}/i, /NO\.?\s*\d{4,}/i, /合同[号]?[\s:：#]*[A-Za-z0-9\-]{4,}/, /订单[\s:：#]*[A-Za-z0-9\-]{4,}/, /[#]\d{4,}/];
+  for(const p of pats){ const m=txt.match(p); if(m) return m[0].replace(/\s/g,'').toUpperCase(); }
+  return '';
+}
+function buildFlowRows(dataRows, map, dirMode){
+  return (dataRows||[]).map(cols=>{
+    if(!cols || cols.every(c=>!c)) return null;
+    const row={date:'',name:'',amt:0,dir:'',summary:'',raw:cols.join(' '),contract:''};
+    if(map.date!=null) row.date=normDate(cols[map.date]);
+    if(map.name!=null) row.name=(cols[map.name]||'').trim();
+    if(map.debit!=null && map.credit!=null){ const d=parseAmt(cols[map.debit]), c=parseAmt(cols[map.credit]); if(d>0){row.amt=d;row.dir='付';} else if(c>0){row.amt=c;row.dir='收';} }
+    else if(map.income!=null && map.expense!=null){ const inc=parseAmt(cols[map.income]), exp=parseAmt(cols[map.expense]); if(inc>0){row.amt=inc;row.dir='收';} else if(exp>0){row.amt=exp;row.dir='付';} }
+    else if(map.amt!=null){ let a=parseAmt(cols[map.amt]); if(dirMode==='sign'||map.dir==null){ row.amt=Math.abs(a); row.dir=a<0?'付':'收'; } else { row.amt=Math.abs(a); }
+      if(map.dir!=null){ const t=cols[map.dir]||''; if(/付|贷|支/.test(t)) row.dir='付'; else if(/收|贷/.test(t)) row.dir='收'; } }
+    else if(map.dir!=null){ row.dir=/付|贷|支/.test(cols[map.dir]||'')?'付':(/收|贷|借/.test(cols[map.dir]||'')?'收':''); }
+    if(map.summary!=null) row.summary=(cols[map.summary]||'').trim();
+    row.contract=extractContractNo(row.summary, row.raw);
+    if(!row.dir && row.name) row.dir=inferDir(row.name);
+    if(!row.name || !(row.amt>0)) return null;
+    return row;
+  });
+}
+function scoreRec(r, n, dir, amt, dm){
+  const up=(r.上游公司||'').replace(/\s/g,''), down=(r.下游公司||'').replace(/\s/g,'');
+  const hitUp= up && (up.includes(n)||n.includes(up)), hitDown= down && (down.includes(n)||n.includes(down));
+  const sideHit = dir==='收'? hitUp : dir==='付'? hitDown : (hitUp||hitDown);
+  if(!sideHit) return 0;
+  let score=0; const ref= dir==='收'?up:(dir==='付'?down:(hitUp?up:down));
+  if(ref===n) score+=2; else if(ref && (ref.includes(n)||n.includes(ref))) score+=1.4; else score+=0.6;
+  if(amt>0){ const target= dir==='收'?num(r.上游应收金额):num(r.下游应付金额);
+    const remain= target-(dir==='收'?num(r.上游已走金额):num(r.下游已走金额));
+    if(Math.abs(amt-remain)<1) score+=1.2; else if(Math.abs(amt-target)<1) score+=1; else if(target>0 && Math.abs(amt-target)/target<0.05) score+=0.5; }
+  if(dm && r.月份 && r.月份.slice(0,7)===dm) score+=0.5;
+  return score;
+}
+function matchCompany(name, dir, amt, date, contract){
+  if(!name && !contract) return [];
+  if(contract){
+    const exact=visibleRecords().filter(r=>(r.合同编号||'').trim().toUpperCase()===(contract||'').trim().toUpperCase());
+    if(exact.length) return exact;
+  }
+  const n=name.replace(/\s/g,''), dm=date?date.slice(0,7):'';
+  return visibleRecords().map(r=>({r,score:scoreRec(r,n,dir,amt,dm)})).filter(x=>x.score>0)
+    .sort((a,b)=>b.score-a.score).slice(0,8).map(x=>x.r);
+}
+function pickField(r,name,dir){ const up=(r.上游公司||'').replace(/\s/g,''), down=(r.下游公司||'').replace(/\s/g,''), n=(name||'').replace(/\s/g,'');
+  if(dir==='收') return '上游已走金额'; if(dir==='付') return '下游已走金额';
+  if(up && (up.includes(n)||n.includes(up))) return '上游已走金额'; return '下游已走金额'; }
+function applyFlow(rows){
+  let applied=0, warnings=[], skipped=0;
+  const items=$('#flowResult').querySelectorAll('.row-item');
+  items.forEach((el,i)=>{ const rid=el.querySelector('.flow-match').value; if(!rid) return;
+    const r=records.find(x=>x.id===rid); const row=rows[i]; const field=pickField(r,row.name,row.dir);
+    const base=(field==='上游已走金额')?num(r.上游应收金额):num(r.下游应付金额);
+    const cur=num(r[field]), after=cur+row.amt;
+    if(base>0 && after>base+0.5){ warnings.push({name:row.name, amt:row.amt, base, cur, after, field, co:(field==='上游已走金额')?(r.上游公司||''):(r.下游公司||'')}); skipped++; return; }
+    r[field]=after; if(unwalked(r)<=0.5) r.交易情况='已完成'; applied++; });
+  if(warnings.length){
+    let msg='⚠️ 检测到 '+warnings.length+' 笔流水会导致「已走」超过「应付/应收」，已自动跳过防止数据错误：\n\n';
+    warnings.forEach(w=>{ msg+='• '+w.name+' ¥'+fmt(w.amt)+' → '+w.co+' 的'+(w.field==='上游已走金额'?'上游已走':'下游已走')+'将从 ¥'+fmt(w.cur)+' 变成 ¥'+fmt(w.after)+'（超过目标 ¥'+fmt(w.base)+'）\n'; });
+    msg+'\n\n建议：检查该台账记录的应付/应收金额是否正确，或拆分成多条合同记录后再匹配。';
+    alert(msg);
+  }
+  if(applied){ save(); renderAll(); toast('已应用 '+applied+' 笔'+(skipped?'，跳过 '+skipped+' 笔超限':'')); }
+  else if(skipped) toast('全部跳过（超限），请先核对台账金额');
+  else toast('没有可应用的匹配，请先为每行选择台账');
+}
+function renderFlowResult(flow){
+  if(!flow.length){ $('#flowResult').innerHTML='<div class="empty">未解析到有效流水行，请检查格式或文件</div>'; return; }
+  $('#flowResult').innerHTML=flow.map((r,i)=>{
+    const cands=matchCompany(r.name, r.dir, r.amt, r.date, r.contract);
+    const top=cands[0]?scoreRec(cands[0], r.name.replace(/\s/g,''), r.dir, r.amt, r.date?r.date.slice(0,7):''):0;
+    const remain0=cands[0]?((flow[i].dir==='收'?num(cands[0].上游应收金额):num(cands[0].下游应付金额))-(flow[i].dir==='收'?num(cands[0].上游已走金额):num(cands[0].下游已走金额))):0;
+    const auto=(top>=1.2 && remain0>=flow[i].amt-0.5)?cands[0].id:(r.contract&&cands[0]?cands[0].id:'');
+    const opts=`<option value="">— 未匹配 —</option>`+cands.map(c=>{ const base=(flow[i].dir==='收'?num(c.上游应收金额):num(c.下游应付金额)); const rem=base-(flow[i].dir==='收'?num(c.上游已走金额):num(c.下游已走金额)); return `<option value="${c.id}">${esc(c.合同编号||'—')} · ${esc(c.上游公司||'')} → ${esc(c.下游公司||'')} · 余${fmt(rem)} [${esc(c.板块)}]</option>`; }).join('');
+    return `<div class="row-item ${auto?'matched':'unmatched'}" data-i="${i}"><div class="ri-top"><span class="ri-co">${esc(r.name)}</span><span class="ri-amt ${r.dir==='收'?'pos':'neg'}">${r.dir==='收'?'收 ':'付 '}${fmt(r.amt)}</span></div>
+      <div class="ri-mid">${esc(r.date||'')}${r.summary?(' · '+esc(r.summary.slice(0,30))):''} · 方向：${r.dir||'未识别'}</div>
+      <select class="flow-match"${auto?` data-auto="${auto}"`:''}>${opts}</select>
+      <div class="flow-status" style="margin-top:6px"></div></div>`;
+  }).join('') + `<div class="actions"><button class="btn ok" id="flowApply">应用到台账</button></div>`;
+  $('#flowResult').querySelectorAll('.row-item').forEach(el=>{ const sel=el.querySelector('.flow-match'); if(sel.dataset.auto) sel.value=sel.dataset.auto; });
+  $('#flowApply').onclick=()=>applyFlow(flow);
+  $('#flowResult').querySelectorAll('.row-item').forEach((el,i)=>{ const sel=el.querySelector('.flow-match'); const st=el.querySelector('.flow-status');
+    const upd=()=>{ const rid=sel.value; el.classList.toggle('matched',!!rid); el.classList.toggle('unmatched',!rid);
+      if(!rid){ st.innerHTML='<span class="match-no">未匹配，可手动指定或忽略</span>'; return; }
+      const r=records.find(x=>x.id===rid); const dir=flow[i].dir; const field=pickField(r,flow[i].name,dir);
+      const cur=num(r[field]); const after=cur+flow[i].amt; const base=dir==='收'?num(r.上游应收金额):num(r.下游应付金额);
+      const willFull= Math.abs(after-base)<0.5;
+      const overLimit=(base>0 && after>base+0.5);
+      if(overLimit){ st.innerHTML=`<span class="match-warn">⚠️ 超限！${dir==='收'?'上游已走':'下游已走'}将从 ¥${fmt(cur)} 变成 ¥${fmt(after)}（超过目标 ¥${fmt(base)}，应用时将自动跳过）</span>`; }
+      else{ st.innerHTML=`<span class="match-ok">将冲减「${dir==='收'?'上游已走':'下游已走'}」+${fmt(flow[i].amt)} → ${fmt(after)}${willFull?'（该笔结清）':''}</span>`; } };
+    sel.onchange=upd; upd(); });
+  window._flowRows=flow;
+}
+/* 人工兜底：列映射校正面板（自动识别如有偏差可手动改列后重解析） */
+function renderFlowColMap(){
+  const box=$('#flowColMap'); if(!box||!window._flowFileRows) return;
+  const hdr=window._flowFileRows[window._flowFileHeader].map(c=>(c||'').trim());
+  const map=window._flowFileMap||{};
+  const roles=[['date','日期'],['name','对方户名'],['amt','金额'],['dir','方向列(借/贷/收/付)'],['debit','借方列'],['credit','贷方列']];
+  let html='<div style="font-size:13px;font-weight:600;margin:10px 0 6px;color:#444">列映射校正（自动识别如有偏差，改完点"重新解析"）</div>';
+  html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px">';
+  for(const [role,label] of roles){
+    html+=`<div style="display:flex;flex-direction:column;gap:2px"><label style="font-size:12px;color:#666">${label}</label>`+
+      `<select class="fcm-sel" data-role="${role}" style="min-height:40px;font-size:14px;padding:0 8px;border:1px solid #dcdce3;border-radius:8px;background:#fff">`+
+      `<option value="-1">— 不选 —</option>`+hdr.map((h,j)=>`<option value="${j}"${map[role]===j?' selected':''}>列${j+1}: ${esc(h||'(空)')}</option>`).join('')+`</select></div>`;
+  }
+  html+='</div><div class="actions"><button class="btn primary" id="flowReparse">重新解析(用手动映射)</button></div>';
+  box.innerHTML=html; box.style.display='';
+  $('#flowReparse').onclick=reparseFlow;
+}
+function getColMapFromUI(){
+  const map={date:null,name:null,amt:null,dir:null,debit:null,credit:null,income:null,expense:null,summary:(window._flowFileMap&&window._flowFileMap.summary)!=null?window._flowFileMap.summary:null};
+  document.querySelectorAll('#flowColMap .fcm-sel').forEach(sel=>{ const v=parseInt(sel.value); const role=sel.dataset.role; map[role]= v<0?null:v; });
+  return map;
+}
+function reparseFlow(){
+  const map=getColMapFromUI();
+  let dirMode='auto';
+  if(map.debit!=null && map.credit!=null) dirMode='bank';
+  else if(map.amt!=null) dirMode=map.dir!=null?'auto':'sign';
+  const dm=curDirMode()||dirMode;
+  const dataRows=window._flowFileRows.slice(window._flowFileHeader>=0?window._flowFileHeader+1:0);
+  const flow=buildFlowRows(dataRows, map, dm).filter(Boolean);
+  if(!flow.length){ $('#flowResult').innerHTML='<div class="empty">该映射下未解析到有效流水行，请调整列映射</div>'; return; }
+  renderFlowResult(flow);
+}
+function curDirMode(){ const el=document.querySelector('input[name="flowdir"]:checked'); return el?el.value:null; }
+function runFlowParse(){
+  let fullRows, map, headerIdx, detDir;
+  if(window._flowFileRows){ fullRows=window._flowFileRows; map=window._flowFileMap; headerIdx=window._flowFileHeader; detDir=window._flowFileDirMode; }
+  else { const raw=$('#flowPaste').value.trim(); if(!raw){ toast('请上传文件或粘贴流水'); return; }
+    const tr=csvToRows(raw); const det=detectHeaderAndMap(tr); fullRows=tr; map=det.map; headerIdx=det.headerIdx; detDir=det.dirMode; }
+  const dirMode=curDirMode()||detDir||'auto';
+  const dataRows=fullRows.slice(headerIdx>=0?headerIdx+1:0);
+  const flow=buildFlowRows(dataRows, map, dirMode).filter(Boolean);
+  if(!flow.length){ $('#flowResult').innerHTML='<div class="empty">未解析到有效流水行，请检查格式或文件</div>'; return; }
+  renderFlowResult(flow);
+}
+async function loadFlowFile(file){
+  try{
+    const name=file.name.toLowerCase(); let rows;
+    if(name.endsWith('.csv')||name.endsWith('.txt')||name.endsWith('.json')){ const text=await file.text(); rows= name.endsWith('.json')? parseJsonRows(text) : csvToRows(text); }
+    else { rows=await readXlsx(file); }
+    if(!rows||!rows.length){ toast('文件无数据'); return; }
+    const det=detectHeaderAndMap(rows);
+    window._flowFileRows=rows; window._flowFileMap=det.map; window._flowFileHeader=det.headerIdx; window._flowFileDirMode=det.dirMode;
+    const fi=$('#flowFileInfo'); fi.style.display=''; fi.textContent='已读取 '+rows.length+' 行 · 识别列：'+(describeMap(det.map))+' · 方向模式：'+(det.dirMode==='bank'?'借/贷':det.dirMode==='sign'?'金额正负':'自动');
+    const radio=document.querySelector('input[name="flowdir"][value="'+(det.dirMode==='bank'?'bank':det.dirMode==='sign'?'sign':'auto')+'"]'); if(radio) radio.checked=true;
+    $('#flowDirToggle').style.display='';
+    renderFlowColMap();
+    runFlowParse();
+  }catch(e){ console.error(e); toast('解析失败：'+(e&&e.message||e)); }
+}
+function parseJsonRows(text){ try{ const j=JSON.parse(text); if(Array.isArray(j)) return j.map(o=> Array.isArray(o)?o:Object.values(o)); }catch(_){} return []; }
+/* ===== xlsx 读取器（零依赖：浏览器原生解压 + XML 解析） ===== */
+function decU8(u8){ return new TextDecoder('utf-8').decode(u8); }
+async function inflateRaw(comp){ if(typeof DecompressionStream==='undefined') throw new Error('浏览器不支持解压，请改用 CSV');
+  const ds=new DecompressionStream('deflate-raw'); const s=new Blob([comp]).stream().pipeThrough(ds); const ab=await new Response(s).arrayBuffer(); return new Uint8Array(ab); }
+async function unzip(buf){ const view=new DataView(buf.buffer, buf.byteOffset, buf.byteLength); let eocd=-1;
+  for(let i=buf.length-22;i>=0;i--){ if(buf[i]===0x50&&buf[i+1]===0x4b&&buf[i+2]===0x05&&buf[i+3]===0x06){ eocd=i; break; } }
+  if(eocd<0){ if(buf[0]===0xD0&&buf[1]===0xCF&&buf[2]===0x11&&buf[3]===0xE0) throw new Error('.xls 老格式(Excel 97-2003)暂不支持，请另存为 .xlsx 后上传，或把内容粘贴为 CSV'); throw new Error('不是有效的 Excel/ZIP 文件'); }
+  const map=new Map(); let p=view.getUint32(eocd+16,true);
+  while(p+4<=buf.length){ if(!(buf[p]===0x50&&buf[p+1]===0x4b&&buf[p+2]===0x01&&buf[p+3]===0x02)) break;
+    const method=view.getUint16(p+10,true); const compSize=view.getUint32(p+20,true); const uncompSize=view.getUint32(p+24,true);
+    const fl=view.getUint16(p+28,true); const xl=view.getUint16(p+30,true); const cl=view.getUint16(p+32,true); const lho=view.getUint32(p+42,true);
+    let fn=''; for(let k=0;k<fl;k++) fn+=String.fromCharCode(buf[p+46+k]);
+    const lm=view.getUint16(lho+8,true); const lc=view.getUint32(lho+18,true); const lfn=view.getUint16(lho+26,true); const lxl=view.getUint16(lho+28,true);
+    const ds=lho+30+lfn+lxl; const size=compSize||lc; const comp=new Uint8Array(buf.buffer, buf.byteOffset+ds, size);
+    let data; if(method===0) data=comp; else data=await inflateRaw(comp);
+    map.set(fn, data); p+=46+fl+xl+cl; }
+  if(!map.size) throw new Error('ZIP 内无文件'); return map; }
+function colNum(ref){ let n=0; for(const ch of ref){ if(ch>='A'&&ch<='Z') n=n*26+(ch.charCodeAt(0)-64); else break; } return n-1; }
+function parseSharedStrings(xml){ const doc=new DOMParser().parseFromString(xml,'text/xml'); const out=[]; const sis=doc.getElementsByTagName('si');
+  for(const si of sis){ out.push((si.textContent||'').trim()); } return out; }
+function parseSheetOrder(xml){ const doc=new DOMParser().parseFromString(xml,'text/xml'); const out=[]; const sh=doc.getElementsByTagName('sheet');
+  for(const s of sh){ out.push(s.getAttribute('name')||''); } return out; }
+function parseSheetXml(xml, shared){ const doc=new DOMParser().parseFromString(xml,'text/xml'); const out=[]; const rows=doc.getElementsByTagName('row');
+  for(const row of rows){ const cells=row.getElementsByTagName('c'); let maxC=0; for(const c of cells){ const ref=c.getAttribute('r')||''; const col=colNum(ref); if(col>maxC) maxC=col; }
+    const arr=new Array(maxC+1).fill('');
+    for(const c of cells){ const ref=c.getAttribute('r')||''; const col=colNum(ref); const t=c.getAttribute('t'); const v=c.getElementsByTagName('v')[0]; const is=c.getElementsByTagName('is')[0]; let val='';
+      if(t==='s'&&v){ val=shared[parseInt(v.textContent)]||''; } else if((t==='str'||t==='inlineStr')&&(v||is)){ val=(v?v.textContent:(is?is.textContent:''))||''; } else if(v){ val=v.textContent; }
+      arr[col]=val; }
+    out.push(arr); }
+  return out; }
+async function readXlsx(file){
+  const buf=new Uint8Array(await file.arrayBuffer()); const files=await unzip(buf);
+  let shared=[]; if(files.has('xl/sharedStrings.xml')) shared=parseSharedStrings(decU8(files.get('xl/sharedStrings.xml')));
+  let sheetName='xl/worksheets/sheet1.xml';
+  if(files.has('xl/workbook.xml')){ const order=parseSheetOrder(decU8(files.get('xl/workbook.xml'))); const cand=order.map(n=>'xl/worksheets/'+n.replace(/ /g,'')+'.xml').filter(x=>files.has(x)); if(cand.length) sheetName=cand[0];
+    else { const re=[...files.keys()].filter(k=>/xl\/worksheets\/sheet\d+\.xml$/.test(k)).sort(); if(re.length) sheetName=re[0]; } }
+  const xml=files.get(sheetName); if(!xml) throw new Error('未找到工作表');
+  return parseSheetXml(decU8(xml), shared);
+}
+$('#flowParse').onclick=runFlowParse;
+$('#flowClear').onclick=()=>{ $('#flowPaste').value=''; $('#flowResult').innerHTML=''; window._flowFileRows=null; const fi=$('#flowFileInfo'); if(fi){fi.style.display='none';fi.textContent='';} $('#flowDirToggle').style.display='none'; const cm=$('#flowColMap'); if(cm){cm.style.display='none';cm.innerHTML='';} };
+const fd=$('#flowDrop');
+if(fd){ fd.onclick=()=>$('#flowFile').click();
+  fd.addEventListener('dragover',e=>{e.preventDefault();fd.classList.add('drag');});
+  fd.addEventListener('dragleave',()=>fd.classList.remove('drag'));
+  fd.addEventListener('drop',e=>{e.preventDefault();fd.classList.remove('drag'); const f=e.dataTransfer.files[0]; if(f) loadFlowFile(f);}); }
+$('#flowFile').onchange=e=>{ const f=e.target.files[0]; if(f) loadFlowFile(f); e.target.value=''; };
+
+/* ---------- 智能录入：发票核对 ---------- */
+function matchInvoice(){
+  const type=$('#i_类型').value, amt=num($('#i_金额').value);
+  const seller=$('#i_销售方').value.trim(), buyer=$('#i_购买方').value.trim();
+  if(!amt){ $('#invoiceResult').innerHTML='<div class="empty">请填写发票金额</div>'; return; }
+  // 销售发票：我们开给下游 → 匹配 下游公司 + 金额(近似); 采购发票：上游开给我 → 匹配 上游公司 + 金额
+  const field= type.startsWith('销售')?'下游公司':'上游公司';
+  const amtField= type.startsWith('销售')?'下游开票金额':'上游开票金额';
+  const name= type.startsWith('销售')? buyer : seller;
+  const cands=visibleRecords().filter(r=>{ const v=(r[field]||'').replace(/\s/g,''); const n=name.replace(/\s/g,''); return v && (v.includes(n)||n.includes(v)); })
+    .map(r=>({r, amtDiff:Math.abs(num(r.下游应付金额||r.上游应收金额)-amt)}))
+    .sort((a,b)=>a.amtDiff-b.amtDiff).slice(0,8);
+  const opts=`<option value="">— 未匹配 —</option>`+cands.map(c=>`<option value="${c.r.id}">${esc(c.r.上游公司||'')} → ${esc(c.r.下游公司||'')} [${esc(c.r.板块)}]</option>`).join('');
+  $('#invoiceResult').innerHTML=`<div class="row-item"><div class="ri-top"><span class="ri-co">${type} · ${fmt(amt)}</span></div>
+    <div class="ri-mid">${esc(name||'未填主体')}</div><select id="invMatch">${opts}</select>
+    <div class="flow-status" id="invStatus" style="margin-top:6px"></div></div>
+    <div class="actions"><button class="btn ok" id="invApply">写入开票金额</button></div>`;
+  const upd=()=>{ const rid=$('#invMatch').value; const st=$('#invStatus'); if(!rid){ st.innerHTML='<span class="match-no">未匹配</span>'; return; }
+    const r=records.find(x=>x.id===rid); st.innerHTML=`<span class="match-ok">将写入「${type.startsWith('销售')?'下游开票':'上游开票'}金额」${fmt(amt)}</span>`; };
+  $('#invMatch').onchange=upd; upd();
+  $('#invApply').onclick=()=>{ const rid=$('#invMatch').value; if(!rid){ toast('请先选择匹配的台账记录'); return; }
+    const r=records.find(x=>x.id===rid); r[amtField]=amt; save(); renderAll(); toast('已写入开票金额'); };
+}
+$('#iMatch').onclick=matchInvoice; $('#iClear').onclick=()=>{ ['i_金额','i_销售方','i_购买方','i_发票号','i_日期'].forEach(id=>$('#'+id).value=''); $('#invoiceResult').innerHTML=''; };
+
+/* ---------- 上传即匹配公司（前端轻量匹配，不依赖 AI 后端） ---------- */
+function companyPool(){
+  const m={};
+  visibleRecords().forEach(r=>{ if(r.上游公司) m[r.上游公司.replace(/\s/g,'')]={up:r.上游公司,down:r.下游公司,block:r.板块}; if(r.下游公司) m[r.下游公司.replace(/\s/g,'')]={up:r.上游公司,down:r.下游公司,block:r.板块}; });
+  return Object.values(m);
+}
+function guessMonthFromName(name){
+  const m=name.replace(/\s/g,'').match(/(\d{4})[-_年.]?(\d{1,2})([-_月.]?\d{1,2})?/);
+  if(m){ const y=m[1], mo=parseInt(m[2],10); if(mo>=1&&mo<=12) return `${y}-${String(mo).padStart(2,'0')}`; }
+  return null;
+}
+function autoMatchFromFile(file){
+  if(!file||!file.name) return;
+  const nm=file.name.replace(/\.[^.]+$/,'').replace(/\s/g,'');
+  const pool=companyPool();
+  let hit=null;
+  for(const c of pool){ const cn=c.up.replace(/\s/g,''), dn=c.down?c.down.replace(/\s/g,''):''; if((cn&&(nm.includes(cn)||cn.includes(nm)))||(dn&&(nm.includes(dn)||dn.includes(nm)))){ hit=c; break; } }
+  if(hit){
+    const ib=$('#ingestBlock'); if(ib&&hit.block) ib.value=hit.block;
+    $('#c_板块').value=hit.block||'';
+    $('#c_上游公司').value=hit.up||''; $('#c_下游公司').value=hit.down||'';
+    toast('已自动匹配：'+(hit.up||hit.down)+'（'+(hit.block||'')+'）');
+  }
+  const ym=guessMonthFromName(file.name); if(ym){ const cm=$('#c_月份'); if(cm) cm.value=ym; }
+  contractReview();
+}
+function autoMatchInvoiceFile(file){
+  if(!file||!file.name) return;
+  const nm=file.name.replace(/\.[^.]+$/,'').replace(/\s/g,'');
+  const pool=companyPool();
+  let hit=null;
+  for(const c of pool){ const cn=c.up.replace(/\s/g,''), dn=c.down?c.down.replace(/\s/g,''):''; if((cn&&(nm.includes(cn)||cn.includes(nm)))||(dn&&(nm.includes(dn)||dn.includes(nm)))){ hit=c; break; } }
+  if(hit){ $('#i_销售方').value=hit.down||''; $('#i_购买方').value=hit.up||''; toast('已自动匹配发票主体：'+(hit.up||hit.down)); }
+}
+/* ---------- 文件选择 / 拖拽 ---------- */
+function bindDrop(dropId, inputId, handler){
+  const d=$('#'+dropId), i=$('#'+inputId);
+  d.onclick=()=> i.click();
+  i.onchange=e=>{ const f=e.target.files[0]; if(f) handler(f); e.target.value=''; };
+  ['dragenter','dragover'].forEach(ev=> d.addEventListener(ev, e=>{ e.preventDefault(); e.stopPropagation(); d.style.borderColor='var(--brand)'; d.style.background='#f0f6ff'; }));
+  ['dragleave','drop'].forEach(ev=> d.addEventListener(ev, e=>{ e.preventDefault(); e.stopPropagation(); d.style.borderColor=''; d.style.background=''; }));
+  d.addEventListener('drop', e=>{ const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f) handler(f); });
+}
+bindDrop('contractDrop','contractFile', f=>{ captureContractFile(f); autoMatchFromFile(f); aiExtractContract(f); });
+bindDrop('invoiceDrop','invoiceFile', f=>{ autoMatchInvoiceFile(f); aiExtractInvoice(f); });
+
+/* ---------- AI 抽取（路线B 后端） ---------- */
+async function aiExtract(kind, file, fields, mapIds){
+  const api=$('#c_api').value.trim();
+  const st=$('#'+(kind==='invoice'?'aiStatusInv':'aiStatus'));
+  const say=(t,c)=>{ if(st){ st.textContent=t; st.style.color=c; } };
+  if(!api){ say('未填 AI 后端地址，请手动录入','var(--warn)'); return; }
+  const MB=(file.size/1048576).toFixed(1);
+  if(file.size>20*1048576){ say('文件超过 20MB（'+MB+'MB），请压缩后再传','var(--danger)'); return; }
+  say('AI 抽取中…（'+file.name+' · '+MB+'MB）','var(--brand)');
+  try{
+    const url=api.replace(/\/+$/,'')+'/extract'+(kind==='invoice'?'?kind=invoice':'');
+    const ctl=new AbortController(); const tm=setTimeout(()=>ctl.abort(),120000);
+    const res=await fetch(url,{method:'POST',body:file,signal:ctl.signal,headers:{'X-Filename':encodeURIComponent(file.name),'Content-Type':'application/octet-stream'}});
+    clearTimeout(tm);
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok){ say('抽取失败：'+(data.error||res.status),'var(--danger)'); toast('AI 抽取失败'); return; }
+    let n=0;
+    fields.forEach(k=>{ const el=$('#'+mapIds[k]); if(el && data[k]!==undefined && data[k]!==''){ el.value=data[k]; n++; } });
+    say('AI 已抽取 '+n+' 个字段并填入表单，请核对后再入账'+(data._demo?'（演示模式）':''),'var(--ok)');
+    if(kind==='contract') contractReview();
+    toast('AI 已抽取'+(kind==='invoice'?'发票':'合同')+' '+n+' 个字段');
+  }catch(err){
+    const m=(err&&err.name==='AbortError')?'抽取超时（>2分钟），请重试或换小文件':('AI 后端未连接（'+((err&&err.message)||err)+'）。请双击 run_server.bat 启动后端，或手动录入。');
+    say(m,'var(--danger)'); toast('AI 抽取未完成');
+  }
+}
+function aiExtractContract(f){ aiExtract('contract', f, ['上游公司','下游公司','上游应收金额','下游应付金额','账期','开票条款','月份','板块'], {上游公司:'c_上游公司',下游公司:'c_下游公司',上游应收金额:'c_上游应收金额',下游应付金额:'c_下游应付金额',账期:'c_账期',开票条款:'c_开票条款',月份:'c_月份',板块:'c_板块'}); }
+function aiExtractInvoice(f){ aiExtract('invoice', f, ['发票类型','销售方','购买方','金额','发票号','日期'], {发票类型:'i_类型',销售方:'i_销售方',购买方:'i_购买方',金额:'i_金额',发票号:'i_发票号',日期:'i_日期'}); }
+
+/* ---------- 附件（合同/发票保存与查看） ---------- */
+const ATT_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px"><path d="M21.44 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l9.19-9.19a3 3 0 0 1 4.24 4.24l-9.2 9.19a1 1 0 0 1-1.41-1.41l8.49-8.49"/></svg>';
+let pendingContractFile=null, sheetAttachments=[], attViewRec=null;
+function readFileAsAttachment(file, cb){
+  const isImg=/^image\//.test(file.type), MAX=800;
+  if(isImg){ const r=new FileReader();
+    r.onload=()=>{ const img=new Image();
+      img.onload=()=>{ let w=img.width,h=img.height; if(w>MAX||h>MAX){ const s=Math.min(MAX/w,MAX/h); w=Math.round(w*s); h=Math.round(h*s); }
+        const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h);
+        const mime=(file.type==='image/png')?'image/png':'image/jpeg'; const data=c.toDataURL(mime,0.85); cb({name:file.name,type:mime,size:data.length,data}); };
+      img.onerror=()=>{ const r2=new FileReader(); r2.onload=()=>cb({name:file.name,type:file.type,size:file.size,data:r2.result}); r2.readAsDataURL(file); };
+      img.src=r.result; };
+    r.readAsDataURL(file);
+  } else { const r=new FileReader(); r.onload=()=>cb({name:file.name,type:file.type,size:file.size,data:r.result}); r.readAsDataURL(file); }
+}
+function storageUsed(){ try{ return unescape(encodeURIComponent(JSON.stringify(records))).length; }catch(e){ return 0; } }
+function fmtKB(b){ return b>1048576? (b/1048576).toFixed(1)+'MB' : Math.max(1,Math.round(b/1024))+'KB'; }
+function captureContractFile(f){ if(f.size>10*1048576){ toast('文件超过 10MB，未作为附件保存'); return; } readFileAsAttachment(f, att=>{ pendingContractFile=att; renderContractFileHint(); }); }
+function renderContractFileHint(){ const el=$('#cFileHint'); if(!el) return; if(!pendingContractFile){ el.innerHTML=''; return; }
+  el.innerHTML=`<span class="fh-ic">${ATT_ICON}</span> 已选附件：${esc(pendingContractFile.name)}（${fmtKB(pendingContractFile.size)}，将随记录保存）<button class="fh-x" id="cFileRm">移除</button>`;
+  const x=$('#cFileRm'); if(x) x.onclick=()=>{ pendingContractFile=null; renderContractFileHint(); }; }
+function renderSheetAttachments(){ const el=$('#attList'); if(!el) return;
+  if(!sheetAttachments.length){ el.innerHTML='<div class="att-empty">暂无附件，点击下方「＋ 添加附件」上传合同/发票</div>'; return; }
+  el.innerHTML=sheetAttachments.map((a,i)=>`<div class="att-chip"><span class="att-ic">${ATT_ICON}</span><span class="att-name" title="${esc(a.name)}">${esc(a.name)}</span><span class="att-sz${a.imaHosted?' ima':''}">${a.imaHosted?'IMA':fmtKB(a.size)}</span>${syncBadge(a)}<button class="att-v" data-v="${i}">查看</button><button class="att-d" data-d="${i}">×</button></div>`).join('');
+  el.querySelectorAll('[data-v]').forEach(b=> b.onclick=()=>viewAttachment(sheetAttachments[+b.dataset.v]));
+  el.querySelectorAll('[data-d]').forEach(b=> b.onclick=()=>{ sheetAttachments.splice(+b.dataset.d,1); renderSheetAttachments(); });
+  renderSyncSummary(); }
+function openAttachmentViewer(id){ const r=records.find(x=>x.id===id); if(!r||!r.附件||!r.附件.length){ toast('该记录暂无附件'); return; }
+  attViewRec=r; $('#attTitle').textContent='附件 · '+(r.上游公司||r.下游公司||'记录'); renderAttList(); $('#attView').innerHTML=''; $('#attOverlay').style.display='flex'; }
+function closeAttachmentViewer(){ $('#attOverlay').style.display='none'; $('#attView').innerHTML=''; attViewRec=null; }
+function renderAttList(){ const el=$('#attList2'); if(!el||!attViewRec) return;
+  el.innerHTML=attViewRec.附件.map((a,i)=>`<div class="att-chip"><span class="att-ic">${ATT_ICON}</span><span class="att-name" title="${esc(a.name)}">${esc(a.name)}</span><span class="att-sz${a.imaHosted?' ima':''}">${a.imaHosted?'IMA':fmtKB(a.size)}</span>${syncBadge(a)}<button class="att-v" data-v="${i}">查看</button><button class="att-d" data-d="${i}">删除</button></div>`).join('');
+  el.querySelectorAll('[data-v]').forEach(b=> b.onclick=()=>viewAttachment(attViewRec.附件[+b.dataset.v]));
+  el.querySelectorAll('[data-d]').forEach(b=> b.onclick=()=>{ attViewRec.附件.splice(+b.dataset.d,1); save(); renderAttList(); renderLedger(); }); }
+function viewAttachment(a){ const v=$('#attView');
+  if(a.imaHosted && !a.data){
+    v.innerHTML=`<div class="att-ima-only"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#2f6df0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/><path d="M9 13h6"/></svg><div class="att-ima-t">该文件已存档于 IMA 知识库</div><div class="att-ima-p">${esc(a.imaPath||'')}</div><div class="att-ima-acts"><button class="btn primary" id="imaOpenBtn">在 IMA 打开</button></div><div class="att-ima-h">点上方按钮在浏览器打开 IMA 知识库网页版（需登录同一账号），按左侧「宽东方 / 增量贸易」下的路径即可找到原件。工作台为单文件离线应用，不连外部接口，故不直接预览/下载 IMA 文件。</div></div>`;
+    const ob=$('#imaOpenBtn'); if(ob) ob.onclick=()=>window.open('https://ima.qq.com','_blank');
+    return;
+  }
+  const isImg=/^image\//.test(a.type), isPdf=/pdf/i.test(a.type);
+  if(isImg) v.innerHTML=`<img src="${a.data}" alt="${esc(a.name)}" style="max-width:100%">`;
+  else if(isPdf) v.innerHTML=`<iframe src="${a.data}" style="width:100%;height:68vh;border:0"></iframe>`;
+  else v.innerHTML=`<a href="${a.data}" download="${esc(a.name)}" class="btn primary">下载 ${esc(a.name)}</a>`; }
+function storageHeadsUp(){ if(storageUsed()>3.5*1048576) toast('注意：本地存储已用较多，再存大附件可能存不下，建议定期导出备份'); }
+
+/* ---------- 弹窗 ---------- */
+function openSheet(id){ editingId=id||null; $('#sheetTitle').textContent=id?'编辑贸易记录':'记一笔贸易'; $('#btnDelete').style.display=id?'block':'none';
+  const r=id?records.find(x=>x.id===id):{}; const set=(k,v)=>{ const e=$('#f_'+k); if(e) e.value=v||''; };
+  set('归属公司',r.归属公司||currentCompanyDefault()); refreshCompanyRegion('#f_归属公司','#f_地区');
+  set('板块',r.板块||''); set('月份',monthOf(r.月份)); set('上游公司',r.上游公司); set('下游公司',r.下游公司); set('合同编号',r.合同编号);
+  set('上游应收金额',r.上游应收金额); set('上游已走金额',r.上游已走金额); set('下游应付金额',r.下游应付金额); set('下游已走金额',r.下游已走金额);
+  set('上游开票金额',r.上游开票金额); set('下游开票金额',r.下游开票金额); set('税金',r.税金); set('流量费',r.流量费);
+  set('交易情况',r.交易情况||'进行中'); set('备注',r.备注);
+  sheetAttachments=(r.附件&&r.附件.length)?r.附件.slice():[]; renderSheetAttachments();
+  autoFlowFee('f_上游应收金额','f_流量费','f_板块');
+  $('#mask').classList.add('show'); }
+function closeSheet(){ $('#mask').classList.remove('show'); editingId=null; }
+function splitRecord(){
+  if(!editingId){ toast('请先保存该记录，再打开编辑进行拆分'); return; }
+  const r=records.find(x=>x.id===editingId); if(!r){ toast('未找到记录'); return; }
+  const n=prompt('将该合同拆分为几笔独立合同？每笔生成独立合同编号（如 '+esc(r.合同编号||'HT')+'-1、-2），便于银行流水逐笔对应。', '2');
+  const N=parseInt(n); if(!N||N<2){ if(n!==null) toast('已取消'); return; }
+  const f=v=>Math.round(v*100)/100;
+  const upA=num(r.上游应收金额), upW=num(r.上游已走金额), downA=num(r.下游应付金额), downW=num(r.下游已走金额);
+  const baseNo=(r.合同编号||('HT'+((r.月份||'').replace(/[^0-9]/g,'').slice(0,6))||'HT'));
+  const idx=records.findIndex(x=>x.id===editingId);
+  const parts=[];
+  for(let k=1;k<=N;k++){ const last=k===N;
+    const upAk=last? f(upA)-parts.reduce((s,p)=>s+p.upA,0) : f(upA/N);
+    const upWk=last? f(upW)-parts.reduce((s,p)=>s+p.upW,0) : f(upW/N);
+    const downAk=last? f(downA)-parts.reduce((s,p)=>s+p.downA,0) : f(downA/N);
+    const downWk=last? f(downW)-parts.reduce((s,p)=>s+p.downW,0) : f(downW/N);
+    parts.push({upA:Math.max(0,upAk),upW:Math.max(0,upWk),downA:Math.max(0,downAk),downW:Math.max(0,downWk)}); }
+  const newRecs=parts.map((p,k)=>Object.assign({}, r, {id:'r'+Date.now()+'_'+k, 合同编号:baseNo+'-'+(k+1),
+    上游应收金额:p.upA, 上游已走金额:p.upW, 下游应付金额:p.downA, 下游已走金额:p.downW, 上游开票金额:'', 下游开票金额:'', 来源:'拆分', 附件:[]}));
+  records.splice(idx,1,...newRecs);
+  save(); closeSheet(); renderAll();
+  toast('已拆分为 '+N+' 笔独立合同，原记录已替换为拆分后的多笔（各自可对应银行流水）'); }
+function saveSheet(){ const get=k=>$('#f_'+k).value.trim();
+  const rec={归属公司:get('归属公司')||currentCompanyDefault(),板块:get('板块')||blocksList()[0]||'未分类',月份:(get('月份')||'')+'-01',上游公司:get('上游公司'),下游公司:get('下游公司'),
+    上游应收金额:get('上游应收金额'),上游已走金额:get('上游已走金额'),下游应付金额:get('下游应付金额'),下游已走金额:get('下游已走金额'),
+    上游开票金额:get('上游开票金额'),下游开票金额:get('下游开票金额'),税金:get('税金'),流量费:get('流量费'),合同编号:get('合同编号'),交易情况:get('交易情况'),备注:get('备注'),附件:sheetAttachments};
+  if(!rec.上游公司&&!rec.下游公司&&!rec.上游应收金额){ toast('请至少填写公司或金额'); return; }
+  if(sheetAttachments.length) storageHeadsUp();
+  if(editingId){ const i=records.findIndex(x=>x.id===editingId); if(i>=0) records[i]={...records[i],...rec}; } else records.push({id:'r'+Date.now(),...rec});
+  save(); closeSheet(); renderAll();
+  const recNow=editingId?records.find(x=>x.id===editingId):rec;
+  const bad=recNow?checkRecord(recNow).filter(x=>x[0]==='err'):[];
+  toast(bad.length?('已保存，'+bad.map(b=>b[1]).join('、')+'（请核对）'):(editingId?'已更新':'已记录'));
+}
+function del(id){ if(!confirm('确定删除这条记录？此操作不可恢复。')) return; records=records.filter(x=>x.id!==id); save(); renderAll(); toast('已删除'); }
+$('#sheetClose').onclick=closeSheet; $('#btnCancel').onclick=closeSheet; $('#btnSave').onclick=saveSheet; $('#btnSplit').onclick=splitRecord;
+$('#f_上游应收金额').oninput=()=>autoFlowFee('f_上游应收金额','f_流量费','f_板块');
+$('#f_板块').oninput=()=>autoFlowFee('f_上游应收金额','f_流量费','f_板块');
+$('#btnDelete').onclick=()=>{ if(editingId) del(editingId); };
+$('#btnExport').onclick=exportJSON; $('#btnExportCsv').onclick=exportCSV; $('#btnImport').onclick=()=>$('#fileInput').click();
+$('#btnExportShared').onclick=openShare; $('#shareClose').onclick=closeShare; $('#shareCancel').onclick=closeShare; $('#shareOk').onclick=doExportShared; $('#shareMask').onclick=e=>{ if(e.target.id==='shareMask') closeShare(); };
+// 录入中心：独立视图，只显示录入区
+$('#btnGoIngest').onclick=()=>{ switchTab('ingest'); window.scrollTo({top:0,behavior:'smooth'}); };
+const _qa=$('#quickAddBtn'); if(_qa) _qa.onclick=()=>openSheet();
+/* 导入同步回执的入口：在同步包按钮上右键/长按触发，或单独加一个导入回执的小链 */
+$('#fileInput').onchange=e=>{ if(e.target.files[0]) importJSON(e.target.files[0]); e.target.value=''; };
+$('#mask').onclick=e=>{ if(e.target.id==='mask') closeSheet(); };
+$('#searchInput').oninput=e=>{ curSearch=e.target.value; renderAll(); };
+$('#segStatus').querySelectorAll('button').forEach(b=> b.onclick=()=>{ curStatus=b.dataset.s; $('#segStatus').querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); renderAll(); });
+$('#ingestTabs').querySelectorAll('button').forEach(b=> b.onclick=()=>{ const t=b.dataset.t; $('#ingestTabs').querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); ['contract','flow','invoice','quick'].forEach(p=>$('#pane-'+p).classList.toggle('on',p===t)); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeSheet(); if($('#attOverlay').style.display!=='none') closeAttachmentViewer(); } });
+$('#attClose').onclick=closeAttachmentViewer;
+$('#attOverlay').onclick=e=>{ if(e.target.id==='attOverlay') closeAttachmentViewer(); };
+$('#f_att').onchange=e=>{ const fs=e.target.files; if(!fs||!fs.length){ return; } const arr=Array.from(fs); let remain=arr.length; const acc=[];
+  arr.forEach(f=>{ if(f.size>10*1048576){ toast('「'+f.name+'」超过 10MB，已跳过'); if(--remain===0) done(); return; }
+    readFileAsAttachment(f, a=>{ acc.push(a); if(--remain===0) done(); }); });
+  function done(){ sheetAttachments=sheetAttachments.concat(acc); renderSheetAttachments(); e.target.value=''; } };
+
+function exportJSON(){ const exp=visibleRecords(); const data={records:exp, _target:target}; const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='宽东方贸易_备份_'+new Date().toISOString().slice(0,10)+'.json'; a.click(); toast('已导出 '+exp.length+' 条（含年度目标）'+(curUser&&curUser.role!=='admin'?'，仅含你可见的公司数据':'')); }
+function openShare(){ const blocks=blocksList(); const wrap=$('#shareBlocks');
+  wrap.innerHTML=blocks.map(b=>`<label style="display:flex;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid #eee;font-size:14px"><input type="checkbox" class="sb" value="${esc(b)}" checked> ${esc(b)}</label>`).join('')
+    +`<label style="display:flex;gap:8px;align-items:center;padding:10px 0;font-size:14px;color:#666"><input type="checkbox" id="sbAll" checked> 全选 / 全不选</label>`;
+  $('#sbAll').onchange=e=>wrap.querySelectorAll('.sb').forEach(c=>c.checked=e.target.checked);
+  $('#shareMask').classList.add('show'); }
+function closeShare(){ $('#shareMask').classList.remove('show'); }
+function doExportShared(){ const sel=[...document.querySelectorAll('#shareBlocks .sb:checked')].map(c=>c.value); if(!sel.length){ toast('请至少勾选一个板块'); return; }
+  const data={_shared:true,_blocks:sel,_exportedAt:new Date().toISOString().slice(0,10),records:visibleRecords().filter(r=>sel.includes(r.板块))};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='宽东方贸易_共享视图_'+sel.join('_')+'_'+data._exportedAt+'.json'; a.click();
+  closeShare(); toast('已导出共享视图（'+data.records.length+' 条，板块：'+sel.join('、')+'）'); }
+function exportCSV(){
+  const ds=filtered();
+  const head=['板块','月份','合同编号','上游公司','下游公司','上游应收','上游已走','下游应付','下游已走','上游开票','下游开票','税金','流量费','估算毛利','待结算','结算率%','账龄(月)','交易情况','来源','异常标记'];
+  const escC=v=>{ v=(v==null?'':String(v)); if(/[",\n]/.test(v)) v='"'+v.replace(/"/g,'""')+'"'; return v; };
+  const rows=ds.map(r=>[r.板块||'',monthOf(r.月份),r.合同编号||'',r.上游公司||'',r.下游公司||'',num(r.上游应收金额),num(r.上游已走金额),num(r.下游应付金额),num(r.下游已走金额),num(r.上游开票金额),num(r.下游开票金额),num(r.税金),num(r.流量费),gross(r),unwalked(r),settledRate([r]),ageMonths(r),r.交易情况||'',r.来源||'',checkRecord(r).some(x=>x[0]==='err')?'异常':''].map(escC).join(','));
+  const csv='﻿'+head.join(',')+'\n'+rows.join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='宽东方贸易_导出_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  toast('已导出 '+ds.length+' 条到 CSV（可用 Excel 打开）');
+}
+function importJSON(file){ if(curUser && curUser.role!=='admin'){ toast('仅管理员可覆盖导入全量数据（成员可用「共享」导入合并自己负责板块）'); return; } const fr=new FileReader(); fr.onload=()=>{ try{ const data=JSON.parse(fr.result);
+  if(Array.isArray(data)){ const norm=data.map((r,i)=>({id:r.id||('i'+Date.now()+i),...r})); if(!confirm('导入将覆盖当前 '+records.length+' 条，替换为文件中的 '+norm.length+' 条？')) return; records=norm; save(); renderAll(); toast('已导入 '+norm.length+' 条'); }
+  else if(data && data._shared===true && Array.isArray(data.records)){ const norm=data.records.map((r,i)=>({id:r.id||('i'+Date.now()+i),...r})); const map=new Map(records.map(r=>[r.id,r])); norm.forEach(r=>map.set(r.id,r)); const merged=[...map.values()]; if(!confirm('导入共享视图（'+norm.length+' 条，仅含板块：'+(data._blocks||[]).join('、')+'）\n将合并到当前台账（'+records.length+' 条），不会删除你已有的记录？')) return; records=merged; save(); renderAll(); toast('已合并 '+norm.length+' 条共享记录'); }
+  else if(data && Array.isArray(data.records)){ const norm=data.records.map((r,i)=>({id:r.id||('i'+Date.now()+i),...r})); if(!confirm('导入将覆盖当前 '+records.length+' 条，替换为文件中的 '+norm.length+' 条？（含年度目标）')) return; records=norm; if(data._target) target=data._target; saveTarget(); save(); renderAll(); toast('已导入 '+norm.length+' 条（含年度目标）'); }
+  else throw 0;
+}catch(e){ toast('导入失败：格式不正确'); } }; fr.readAsText(file); }
+
+/* ---------- IMA 同步包（导出/导入回执） ---------- */
+function syncBadge(a){
+  if(a.imaSynced){
+    if(a.imaHosted) return `<span class="sync-badge ok ima" title="已存档于 IMA：${esc(a.imaPath||'')}">IMA 归档</span>`;
+    return `<span class="sync-badge ok" title="已同步到 IMA: ${esc(a.imaPath||'')} · ${a.imaTime?new Date(a.imaTime).toLocaleDateString():''}">已同步</span>`;
+  }
+  return `<span class="sync-badge wait">待同步</span>`;
+}
+function renderSyncSummary(){
+  const el=$('#syncSummary'); if(!el) return;
+  let total=0, synced=0, pending=0, sz=0, hosted=0;
+  visibleRecords().forEach(r=>{ if(!r.附件) return; r.附件.forEach(a=>{ total++; if(a.imaSynced){ synced++; if(a.imaHosted) hosted++; } else { pending++; sz+=a.size||0; } }); });
+  if(!total){ el.innerHTML=''; return; }
+  el.innerHTML=`<span>共 <b>${total}</b> 个附件</span><span class="sync-badge ok">✓ ${synced} 已归档</span>${hosted?`<span class="sync-badge ok ima">${hosted} 存于IMA</span>`:''}<span class="sync-badge wait">${pending} 待同步</span>${pending?'（本地约 '+(sz/1048576).toFixed(1)+'MB）':''}`;
+}
+function exportSyncPackage(){
+  let count=0, payload=[];
+  visibleRecords().forEach(r=>{
+    if(!r.附件||!r.附件.length) return;
+    const attsWithData=r.附件.filter(a=>a.data && !a.imaSynced);
+    if(!attsWithData.length) return;
+    payload.push({
+      id:r.id, 板块:r.板块||'', 月份:r.月份||'',
+      上游公司:r.上游公司||'', 下游公司:r.下游公司||'',
+      备注:r.备注||'', 来源:r.来源||'',
+      attachments: attsWithData.map(a=>({name:a.name,type:a.type,size:a.size,data:a.data}))
+    });
+    count+=attsWithData.length;
+  });
+  if(!count){ toast('没有待同步的附件（全部已同步或无附件）'); return; }
+  const pkg={version:1, exportedAt:new Date().toISOString(), kb:'宽东方', totalAttachments:count, records:payload};
+  const blob=new Blob([JSON.stringify(pkg,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='IMA同步包_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  toast('已导出同步包：'+count+' 个待同步附件（'+payload.length+' 条记录）');
+}
+function importSyncReceipt(file){
+  const fr=new FileReader();
+  fr.onload=()=>{
+    try{
+      const receipt=JSON.parse(fr.result);
+      if(!receipt.synced || !Array.isArray(receipt.synced)) throw 0;
+      let updated=0, created=0;
+      receipt.synced.forEach(s=>{
+        let recs=records.filter(x=>x.id===s.recordId);
+        if(!recs.length && s.公司 && s.月份){
+          // 兜底：按「公司 + 月份」匹配（应对记录 ID 被重新导入打乱的情况）
+          recs=records.filter(x=>{
+            const up=(x.上游公司||''), dn=(x.下游公司||''), rm=(x.月份||'').slice(0,7);
+            const hit = (up && (up.indexOf(s.公司)>=0 || s.公司.indexOf(up)>=0)) || (dn && (dn.indexOf(s.公司)>=0 || s.公司.indexOf(dn)>=0));
+            return hit && rm===s.月份;
+          });
+        }
+        recs.forEach(r=>{
+          if(!r.附件) r.附件=[];
+          const a=r.附件.find(x=>x.name===s.fileName);
+          if(a){
+            if(!a.imaSynced){ a.imaSynced=true; a.imaHosted=true; a.imaPath=s.imaPath||a.imaPath||''; a.imaTime=s.syncTime||Date.now(); if(s.imaMediaId) a.imaMediaId=s.imaMediaId; if(!a.data) a.size=s.size||a.size||0; updated++; }
+          } else {
+            r.附件.push({name:s.fileName, type:s.type||'', size:s.size||0, imaHosted:true, imaSynced:true, imaPath:s.imaPath||'', imaTime:s.syncTime||Date.now(), imaMediaId:s.imaMediaId||''});
+            created++; updated++;
+          }
+        });
+      });
+      save(); renderAll();
+      toast('已归档 '+updated+' 个附件到 IMA（新增 '+created+' 条）');
+    }catch(e){ toast('回执格式不正确'); }
+  };
+  fr.readAsText(file);
+}
+
+let toastTimer; function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2000); }
+/* ---------- 动态板块（新增公司自动适配，无需改代码） ---------- */
+function blocksList(){
+  const set=new Set(visibleRecords().map(r=>r.板块).filter(Boolean));
+  return Array.from(set);
+}
+function renderTabs(){
+  const el=$('#topTabs'); if(!el) return;
+  const blocks=blocksList();
+  if(curTab!=='all' && curTab!=='ingest' && !blocks.includes(curTab)) curTab='all';
+  // 纯导航 Tab：总览 + 各板块（录入已移至独立按钮）
+  el.innerHTML='<button data-t="all">总览</button>'+blocks.map(b=>`<button data-t="${esc(b)}">${esc(b)}</button>`).join('');
+  el.querySelectorAll('button').forEach(x=>{ x.classList.toggle('on', x.dataset.t===curTab); x.onclick=()=>switchTab(x.dataset.t); });
+}
+function renderBlockSuggestions(){
+  const dl=$('#blockList'); if(dl) dl.innerHTML=blocksList().map(b=>`<option value="${esc(b)}">`).join('');
+}
+function renderIngestBlock(){
+  const el=$('#ingestBlock'); if(!el) return;
+  const blocks=blocksList(); const cur=el.value;
+  el.innerHTML='<option value="">请选择板块</option>'+blocks.map(b=>`<option value="${esc(b)}">${esc(b)}</option>`).join('');
+  if(blocks.includes(cur)) el.value=cur;
+  else el.value = (curTab!=='all'&&curTab!=='ingest')?curTab:blocks[0]||'';
+  el.onchange=()=>{ const c=$('#c_板块'); if(c) c.value=el.value; };
+  const c=$('#c_板块'); if(c) c.value=el.value;
+}
+function renderSegFilter(){
+  const el=$('#segFilter'); if(!el) return;
+  const blocks=blocksList();
+  el.innerHTML='<button data-f="all">← 总览</button>'+blocks.map(b=>`<button data-f="${esc(b)}">${esc(b)}</button>`).join('');
+  el.querySelectorAll('button').forEach(x=>{
+    x.classList.toggle('on', (x.dataset.f==='all'&&curTab==='all') || x.dataset.f===curTab);
+    x.onclick=()=>{ if(x.dataset.f==='all') switchTab('all'); else switchTab(x.dataset.f); };
+  });
+}
+let _blocksKey='';
+function syncBlocksUI(){
+  const key=blocksList().join('|');
+  if(key===_blocksKey) return;
+  _blocksKey=key;
+  renderTabs(); renderBlockSuggestions(); renderIngestBlock();
+  const sf=$('#segFilter'); if(sf) sf.style.display=(curTab==='all')?'none':'';
+  if(curTab!=='all') renderSegFilter();
+}
+function renderCompare(){
+  const el=$('#compareGrid');
+  if(curTab!=='all'){ el.innerHTML=''; return; }
+  const blocks=blocksList();
+  el.innerHTML=blocks.map(b=>{
+    const ds=visibleRecords().filter(r=>r.板块===b);
+    const sum=f=>ds.reduce((s,r)=>s+num(r[f]),0);
+    const upR=sum('上游应收金额'), walked=sum('上游已走金额'), downP=sum('下游应付金额');
+    const grossSum=ds.reduce((s,r)=>s+gross(r),0);
+    const unwalk=ds.reduce((s,r)=>s+unwalked(r),0);
+    const owed=ds.filter(r=>r.交易情况==='欠款'||unwalked(r)>0.001).length;
+    const anom=ds.filter(isAnom).length;
+    const rate= upR>0?Math.round(walked/upR*100):0;
+    return `<div class="party-card"><h3>${b}</h3>
+      <div class="cmp-row"><span>业务规模（上游应收）</span><b>${fmt(upR)}</b></div>
+      <div class="cmp-row"><span>整体结算率</span><b>${rate}%</b></div>
+      <div class="cmp-row"><span>累计估算毛利</span><b class="pos">${fmt(grossSum)}</b></div>
+      <div class="cmp-row"><span>待结算余额</span><b class="neg">${fmt(unwalk)}</b></div>
+      <div class="cmp-row"><span>待跟进 / 异常</span><b>${owed} 笔 / ${anom} 笔</b></div>
+      <div class="cmp-cta"><button class="btn sm primary" data-go="${b}">进入${b} →</button></div></div>`;
+  }).join('');
+  el.querySelectorAll('[data-go]').forEach(b=> b.onclick=()=>switchTab(b.dataset.go));
+}
+function applyTabVisibility(){
+  const show=(id,v)=>{ const e=$('#'+id); if(e) e.style.display=v; };
+  const gi=$('#btnGoIngest'); if(gi) gi.classList.toggle('active', curTab==='ingest');
+  if(curTab==='ingest'){
+    // 录入中心：独立视图，只显示录入区
+    ['secOverview','secCompare','secDataTodo','secPrio','secParty','secLedger'].forEach(id=> show(id,'none'));
+    show('secIngest','');
+    const sf=$('#segFilter'); if(sf) sf.style.display='none';
+    return;
+  }
+  const all=curTab==='all';
+  show('secIngest', 'none');
+  show('secOverview', '');
+  show('secCompare', all?'':'none');
+  show('secDataTodo', all?'':'none');
+  ['secPrio','secParty','secLedger'].forEach(id=> show(id, all?'none':'') );
+  const sf=$('#segFilter'); if(sf) sf.style.display=all?'none':'';
+  if(!all) renderSegFilter();
+}
+function switchTab(t){
+  curTab=t; curFilter=(t==='ingest'||t==='all')?'all':t;
+  renderTabs();
+  applyTabVisibility();
+  if(t!=='all' && t!=='ingest'){ const c=$('#c_板块'); if(c) c.value=t; const ib=$('#ingestBlock'); if(ib) ib.value=t; }
+  if(t==='ingest'){ const ib=$('#ingestBlock'); if(ib && !ib.value) ib.value=blocksList()[0]||''; const c=$('#c_板块'); if(c) c.value=ib?ib.value:''; }
+  renderAll();
+}
+function renderAll(){ syncBlocksUI(); renderOverview(); renderCompare(); renderPrio(); renderParty(); renderLedger(); renderDataTodo(); renderProgress(); renderAnnual(); checkBackup();
+  const bs=blocksList(); $('#subtitle').textContent=(bs.join(' · ')||'多板块贸易经营')+' | 合同审核·流水匹配·发票核对'; }
+function checkBackup(){ const n=visibleRecords().length; if(n>=30){ const b=$('#backupBanner'); b.style.display='flex'; $('#backupBannerText').textContent='数据已积累 '+n+' 条，建议点击右上角「导出」做好 JSON 备份，防止丢失。'; } }
+
+/* ================= 目标管理 ================= */
+let tgtCurrentYear=String(NOW.getFullYear());
+function openTargetManager(){
+  if(!curUser){ toast('请先登录'); return; }
+  tgtCurrentYear=annualYear;
+  // 年份下拉
+  const yrs=[...new Set([String(NOW.getFullYear()), ...Object.keys(target.years||{}).filter(Boolean)])].sort((a,b)=>b-a);
+  const sel=$('#tgtYear'); sel.innerHTML=yrs.map(y=>`<option value="${y}">${y} 年</option>`).join(''); sel.value=tgtCurrentYear;
+  // 旧版 _all 参考
+  const legacy=companyYearTarget(tgtCurrentYear,'_all');
+  const lbox=$('#tgtLegacyBox'); const lval=$('#tgtLegacyVal');
+  if(legacy>0){ lbox.style.display=''; lval.value=fmt(legacy); lval.title='旧版全局目标（迁移保留），请在「全公司」一行下方查看或重设'; }
+  else { lbox.style.display='none'; lval.value=''; }
+  renderTargetTable();
+  $('#targetMask').classList.add('show');
+}
+function closeTargetManager(){ $('#targetMask').classList.remove('show'); renderAnnual(); renderOverview(); }
+function targetRowEditable(companyName){
+  if(!curUser) return false;
+  if(curUser.role==='admin') return true;
+  if(companyName==='_all') return false; // 旧参考行，成员不可改
+  if((curUser.companies||[]).includes(companyName)) return true;
+  if((curUser.regions||[]).includes(companyRegion(companyName))) return true;
+  return false;
+}
+function renderTargetTable(){
+  const yr=tgtCurrentYear;
+  const companies=COMPANIES.slice();
+  // 旧版 _all 行（仅展示/管理员可清空）
+  const legacyVal=companyYearTarget(yr,'_all');
+  if(legacyVal>0){
+    companies.push({name:'_all', region:'旧版'});
+  }
+  const body=$('#tgtBody');
+  body.innerHTML=companies.map(c=>{
+    const editable=targetRowEditable(c.name);
+    const isLegacy=c.name==='_all';
+    let rowTotal=0;
+    const cells=[]; for(let m=1;m<=12;m++){
+      const key=yr+'-'+String(m).padStart(2,'0');
+      const v=getTarget(yr,c.name,key);
+      rowTotal+=num(v);
+      cells.push(`<td><input type="number" inputmode="decimal" data-co="${esc(c.name)}" data-mo="${key}" value="${v||''}" ${editable?'':'disabled'} placeholder="—"></td>`);
+    }
+    const ops=isLegacy
+      ? (curUser&&curUser.role==='admin'?'<button class="btn ghost" data-act="legacy-clear">清旧版</button>':'')
+      : (editable?'<button class="btn ghost" data-act="spread">按全年均摊</button>':'');
+    return `<tr class="${isLegacy?'legacy':''}">
+      <td class="tco">${esc(c.name)}${isLegacy?'<span class="reg">旧版</span>':(c.region?'<span class="reg">'+esc(c.region)+'</span>':'')}</td>
+      ${cells.join('')}
+      <td class="tall">${rowTotal>0?fmt(rowTotal):'—'}</td>
+      <td class="tact">${ops}</td>
+    </tr>`;
+  }).join('');
+  // 底部署名
+  const foot=$('#tgtFoot');
+  const mh='<td class="tco">全公司合计</td>';
+  let msum=''; for(let m=1;m<=12;m++){ const key=yr+'-'+String(m).padStart(2,'0'); msum+=`<td>${fmt(monthTarget(key))}</td>`; }
+  foot.innerHTML=mh+msum+`<td>${fmt(yearTargetTotal(yr))}</td><td class="tact">—</td>`;
+  // 事件
+  body.querySelectorAll('input').forEach(inp=>{
+    inp.oninput=()=>onTargetCellChange(inp);
+  });
+  body.querySelectorAll('[data-act]').forEach(btn=>{
+    btn.onclick=()=>{
+      const tr=btn.closest('tr');
+      const co=tr.querySelector('input').dataset.co;
+      if(btn.dataset.act==='spread'){
+        const total=prompt('为「'+co+'」设置全年目标总额（自动均摊到 12 月）：');
+        const v=num(total); if(!(v>0)) return;
+        setCompanyYearTarget(tgtCurrentYear, co, v);
+        saveTarget(); renderTargetTable(); renderAnnual(); renderOverview();
+        toast('已为「'+co+'」设定全年 '+fmt(v)+'，并均摊到 12 月');
+      } else if(btn.dataset.act==='legacy-clear'){
+        if(!confirm('清除旧版全局目标参考值（'+fmt(companyYearTarget(tgtCurrentYear,'_all'))+'）？此操作不影响各公司目标。')) return;
+        delete target.years[tgtCurrentYear]._all; saveTarget();
+        renderTargetTable(); renderAnnual(); renderOverview(); toast('已清除旧版参考值');
+      }
+    };
+  });
+}
+function onTargetCellChange(inp){
+  const co=inp.dataset.co, mo=inp.dataset.mo, v=num(inp.value);
+  setTarget(tgtCurrentYear, co, mo, v);
+  saveTarget();
+  // 局部刷新：当前行合计 + 底部署名 + 顶部 KPI
+  refreshTargetTotals();
+  renderOverview();
+}
+function refreshTargetTotals(){
+  const yr=tgtCurrentYear;
+  // 每行合计
+  $('#tgtBody').querySelectorAll('tr').forEach(tr=>{
+    const inp=tr.querySelector('input');
+    if(!inp) return;
+    const co=inp.dataset.co;
+    let tot=0; tr.querySelectorAll('input').forEach(i=>{ tot+=num(i.value); });
+    const td=tr.querySelector('td.tall'); if(td) td.textContent=tot>0?fmt(tot):'—';
+  });
+  // 底部署名
+  const foot=$('#tgtFoot');
+  let html='<td class="tco">全公司合计</td>';
+  for(let m=1;m<=12;m++){ const key=yr+'-'+String(m).padStart(2,'0'); html+=`<td>${fmt(monthTarget(key))}</td>`; }
+  html+=`<td>${fmt(yearTargetTotal(yr))}</td><td class="tact">—</td>`;
+  foot.innerHTML=html;
+  // 旧版参考框（如果 _all 行存在但被删了）
+  const legacy=companyYearTarget(yr,'_all');
+  const lbox=$('#tgtLegacyBox'); const lval=$('#tgtLegacyVal');
+  if(legacy>0){ lbox.style.display=''; lval.value=fmt(legacy); } else { lbox.style.display='none'; lval.value=''; }
+}
+function parseTargetCSV(text){
+  const yr=tgtCurrentYear;
+  const map={};
+  text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).forEach(line=>{
+    const parts=line.split(/[,\t]/).map(s=>s.trim());
+    if(parts.length>=3){
+      const [mo,co,va]=parts;
+      if(/^\d{4}-\d{2}$/.test(mo) && co && num(va)>=0){
+        map[mo+'|'+co]=num(va);
+      }
+    } else if(parts.length===2){
+      const [co,va]=parts;
+      if(co && num(va)>0){
+        const total=num(va), per=Math.round(total/12), rem=total-per*12;
+        for(let m=1;m<=12;m++){ map[yr+'-'+String(m).padStart(2,'0')+'|'+co]=per; }
+        map[yr+'-12|'+co]=(map[yr+'-12|'+co]||0)+rem;
+      }
+    }
+  });
+  return map;
+}
+function applyTargetCSV(text){
+  const map=parseTargetCSV(text);
+  const keys=Object.keys(map);
+  if(!keys.length){ toast('未解析到有效行（每行：月份,公司,目标额 或 公司,全年目标）'); return; }
+  for(const [k,v] of Object.entries(map)){
+    const [mo,co]=k.split('|');
+    setTarget(tgtCurrentYear, co, mo, v);
+  }
+  saveTarget(); renderTargetTable(); renderAnnual(); renderOverview();
+  toast('已导入 '+keys.length+' 条目标');
+}
+function exportTargetCSV(){
+  const yr=tgtCurrentYear;
+  const lines=[];
+  COMPANIES.forEach(c=>{
+    for(let m=1;m<=12;m++){
+      const key=yr+'-'+String(m).padStart(2,'0');
+      const v=getTarget(yr,c.name,key);
+      if(v>0) lines.push([key,c.name,v].join(','));
+    }
+  });
+  const blob=new Blob(['\ufeff'+lines.join('\n')||'\ufeff'],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='目标管理_'+yr+'.csv'; a.click();
+  toast('已导出 '+lines.length+' 条目标');
+}
+function resetYearTarget(){
+  if(!confirm('清空「'+tgtCurrentYear+'」年所有公司目标？此操作不可恢复。')) return;
+  delete target.years[tgtCurrentYear]; saveTarget();
+  renderTargetTable(); renderAnnual(); renderOverview(); toast('已清空 '+tgtCurrentYear+' 年目标');
+}
+function setupTargetUI(){
+  $('#tgtClose').onclick=closeTargetManager; $('#tgtDone').onclick=closeTargetManager;
+  $('#targetMask').onclick=e=>{ if(e.target.id==='targetMask') closeTargetManager(); };
+  $('#tgtYear').onchange=()=>{ tgtCurrentYear=$('#tgtYear').value; annualYear=tgtCurrentYear; renderTargetTable(); };
+  $('#tgtUpload').onclick=()=>$('#tgtFile').click();
+  $('#tgtFile').onchange=e=>{ const f=e.target.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>applyTargetCSV(rd.result); rd.readAsText(f); e.target.value=''; };
+  $('#tgtExport').onclick=exportTargetCSV;
+  $('#tgtReset').onclick=resetYearTarget;
+  // 顶栏"目标"按钮：管理员/成员均可用，成员只编辑自己公司
+  // 由 setupAnnual 的 #anOpenMgr 触发；额外加个顶栏入口如 #btnTarget
+}
+
+/* ================= 账号 UI：登录 / 账号管理 ================= */
+function setupAccountUI(){
+  // 登录
+  $('#loginOk').onclick=doLogin;
+  $('#loginUser').addEventListener('keydown',e=>{ if(e.key==='Enter') $('#loginPwd').focus(); });
+  $('#loginPwd').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+  // 顶栏账号按钮：已登录→账号管理（管理员）/切换账号；未登录→登录
+  $('#btnAccount').onclick=()=>{
+    if(curUser){ openAccountManager(); } else { $('#loginMask').classList.add('show'); $('#loginUser').focus(); }
+  };
+  // 顶栏"目标"按钮：登录后可访问（成员仅可编辑自己公司）
+  $('#btnTarget').onclick=()=>{ if(!curUser){ toast('请先登录'); return; } openTargetManager(); };
+  // 账号管理
+  $('#acctClose').onclick=closeAccountManager; $('#acctDone').onclick=closeAccountManager;
+  $('#acctAdd').onclick=addAccount;
+  $('#acctMask').onclick=e=>{ if(e.target.id==='acctMask') closeAccountManager(); };
+  $('#loginMask').onclick=e=>{ if(e.target.id==='loginMask' && curUser){ $('#loginMask').classList.remove('show'); } };
+  // 归属公司下拉联动地区
+  const bindCompany=selId=>{ const s=$('#'+selId); if(!s) return; s.onchange=()=>{ if(selId==='c_归属公司'){} else refreshCompanyRegion('f_归属公司','f_地区'); }; };
+  $('#c_归属公司').addEventListener('change',()=>{});
+  $('#f_归属公司').addEventListener('change',()=>refreshCompanyRegion('f_归属公司','f_地区'));
+}
+function doLogin(){
+  const u=login($('#loginUser').value, $('#loginPwd').value);
+  if(!u){ $('#loginErr').textContent='账号或密码错误，请重试'; return; }
+  $('#loginErr').textContent=''; $('#loginPwd').value='';
+  applyAuthUI(); toast('欢迎，'+(u.name||u.username)+'（'+(u.role==='admin'?'管理员':'成员')+'）');
+}
+function openAccountManager(){
+  if(!curUser || curUser.role!=='admin'){ toast('仅管理员可管理账号'); return; }
+  renderAccountList(); $('#acctMask').classList.add('show');
+}
+function closeAccountManager(){ $('#acctMask').classList.remove('show'); }
+function addAccount(){
+  const username=$('#acctNewUser').value.trim(), name=$('#acctNewName').value.trim(), pwd=$('#acctNewPwd').value.trim();
+  if(!username){ toast('请输入账号名'); return; }
+  if(!pwd){ toast('请输入初始密码'); return; }
+  if(users.some(u=>u.username===username)){ toast('账号「'+username+'」已存在'); return; }
+  users.push({username, name:name||username, passwordHash:hashPw(pwd), role:'member', companies:[], regions:[]});
+  saveUsers(); renderAccountList();
+  $('#acctNewUser').value=''; $('#acctNewName').value=''; $('#acctNewPwd').value='';
+  toast('已添加账号「'+username+'」，请为其分配公司/地区权限');
+}
+function renderAccountList(){
+  const el=$('#acctList'); if(!el) return;
+  el.innerHTML=users.map((u,i)=>{
+    const scopes=[...(u.regions||[]).map(r=>'<span class="sc-tag reg">'+esc(r)+'</span>'), ...(u.companies||[]).map(c=>'<span class="sc-tag">'+esc(c)+'</span>')].join('');
+    return `<div class="acct-item" data-i="${i}">
+      <div class="ai-top">
+        <span class="ai-name">${esc(u.name||u.username)}</span>
+        <span class="ai-user">@${esc(u.username)}</span>
+        <span class="ai-role ${u.role}">${u.role==='admin'?'管理员':'成员'}</span>
+        ${u.username===curUser.username?'<span class="sc-tag" style="background:#eef2ff;border-color:#a5b4fc;color:#4338ca">当前登录</span>':''}
+      </div>
+      <div class="ai-scope">${scopes||'<span style="color:var(--sub);font-size:12px">未分配权限（成员将看不到任何数据）</span>'}</div>
+      <div class="ai-actions">
+        <button class="btn ghost sm" data-act="edit">编辑权限</button>
+        <button class="btn ghost sm" data-act="pwd">改密码</button>
+        ${u.role!=='admin'?`<button class="btn danger sm" data-act="del">删除</button>`:''}
+        ${u.role==='admin'?'':`<button class="btn ghost sm" data-act="admin">设为管理员</button>`}
+      </div>
+      <div class="ai-edit" id="aiEdit-${i}"></div>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.acct-item').forEach(item=>{
+    const i=+item.dataset.i, u=users[i];
+    item.querySelectorAll('[data-act]').forEach(b=>{
+      b.onclick=()=>{
+        const act=b.dataset.act;
+        if(act==='edit') toggleEdit(i, item);
+        else if(act==='pwd') changePwd(i);
+        else if(act==='del') delAccount(i);
+        else if(act==='admin') setAdmin(i);
+      };
+    });
+  });
+}
+function toggleEdit(i, item){
+  const box=$('#aiEdit-'+i); const u=users[i];
+  const isOpen=box.classList.contains('on');
+  document.querySelectorAll('.ai-edit.on').forEach(x=>x.classList.remove('on'));
+  if(isOpen){ box.classList.remove('on'); box.innerHTML=''; return; }
+  box.classList.add('on');
+  box.innerHTML=`
+    <div class="lbl">数据权限（地区）</div>
+    <div class="reg-chk">${REGIONS.map(r=>`<label><input type="checkbox" class="reg" value="${r}" ${(u.regions||[]).includes(r)?'checked':''}> ${r}</label>`).join('')}</div>
+    <div class="lbl">数据权限（公司）</div>
+    <div class="cmp-chk">${COMPANIES.map(c=>`<label class="${(u.companies||[]).includes(c.name)?'checked':''}"><input type="checkbox" class="cmp" value="${esc(c.name)}" ${(u.companies||[]).includes(c.name)?'checked':''}> ${esc(c.name)}</label>`).join('')}</div>
+    <div class="lbl">姓名 / 备注</div>
+    <div class="acct-add-row" style="margin:0"><input id="aiName-${i}" type="text" value="${esc(u.name||'')}" placeholder="姓名"><button class="btn primary sm" id="aiSave-${i}">保存</button></div>`;
+  // 地区勾选联动公司勾选
+  box.querySelectorAll('.reg').forEach(cb=>cb.onchange=()=>{
+    const r=cb.value; const comps=COMPANIES.filter(c=>c.region===r).map(c=>c.name);
+    box.querySelectorAll('.cmp').forEach(cc=>{ if(comps.includes(cc.value)){ cc.checked=cb.checked; cc.closest('label').classList.toggle('checked',cb.checked); } });
+  });
+  box.querySelectorAll('.cmp').forEach(cb=>cb.onchange=()=>cb.closest('label').classList.toggle('checked',cb.checked));
+  $('#aiSave-'+i).onclick=()=>{
+    u.name=$('#aiName-'+i).value.trim()||u.name;
+    u.regions=[...box.querySelectorAll('.reg:checked')].map(x=>x.value);
+    u.companies=[...box.querySelectorAll('.cmp:checked')].map(x=>x.value);
+    saveUsers(); renderAccountList();
+    toast('已保存「'+u.username+'」的权限设置');
+  };
+}
+function changePwd(i){
+  const u=users[i]; const p=prompt('为「'+u.username+'」设置新密码：');
+  if(!p) return;
+  u.passwordHash=hashPw(p); saveUsers(); toast('已更新「'+u.username+'」的密码');
+}
+function delAccount(i){
+  const u=users[i];
+  if(u.role==='admin'){ toast('不能删除管理员'); return; }
+  if(!confirm('确定删除账号「'+u.username+'」？')) return;
+  users.splice(i,1); saveUsers(); renderAccountList(); toast('已删除账号「'+u.username+'」');
+}
+function setAdmin(i){
+  const u=users[i];
+  if(!confirm('将「'+u.username+'」设为管理员？管理员可看全部数据并管理账号。')) return;
+  u.role='admin'; u.companies=COMPANIES.map(c=>c.name); u.regions=REGIONS.slice(); saveUsers(); renderAccountList(); toast('已设为管理员');
+}
+
+target=loadTarget(); migrateTarget(); contractReview(); applyTabVisibility(); setupAnnual(); setupAccountUI();
+detectApiUrl();
+bootRemote();
+/** 自动检测 AI 抽取后端地址：NAS 部署用当前域名+8787，本地 file:// 用 localhost:8787 */
+function detectApiUrl(){
+  const el=$('#c_api'); if(!el) return;
+  const saved=localStorage.getItem('wb_trade_v3_api_url');
+  if(saved){ el.value=saved; el.placeholder='已记住'; return; }
+  try{
+    const o=window.location;
+    if(o.protocol==='file:' || o.hostname==='localhost' || o.hostname==='127.0.0.1'){
+      el.value='http://localhost:8787';
+    } else {
+      // NAS / 远程部署：同域名换端口 8787
+      el.value=o.protocol+'//'+o.hostname+':8787';
+    }
+  }catch(e){ el.value='http://localhost:8787'; }
+  // 用户手动修改后记住
+  el.addEventListener('change',()=>{ localStorage.setItem('wb_trade_v3_api_url', el.value.trim()||''); });
+}
+function setupAnnual(){
+  const ySel=$('#anYear'); if(ySel) ySel.onchange=()=>{ annualYear=ySel.value; renderAnnual(); renderOverview(); };
+  const openBtn=$('#anOpenMgr'); if(openBtn) openBtn.onclick=openTargetManager;
+  setupTargetUI();
+}
+</script>
+</body>
+</html>
