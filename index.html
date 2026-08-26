@@ -1789,7 +1789,7 @@ async function handleDualFile(side, file){
     const data=await extractContractJson(file, api);
     if(!data || data.error){ st.textContent='抽取失败：'+(data&&data.error||'未知')+'，请手动录入'; st.style.color='var(--danger)'; return; }
     dualResults[side]=data;
-    const oc=data.对手方 || data.上游公司 || data.下游公司 || '';
+    let oc=data.对手方 || data.上游公司 || data.下游公司 || '';
     // 前端兜底：如果对手方含宽东方系，显示为空
     if(_isMyLocal(oc)) { data.对手方=''; oc = data.上游公司 || data.下游公司 || ''; }
     const roleTxt = data.我方角色==='买方' ? '我方=买方（→下游供应商）' : (data.我方角色==='卖方' ? '我方=卖方（→上游客户）' : '已抽取');
