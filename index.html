@@ -10,7 +10,7 @@
 <!-- 缓存杀手：版本号内嵌在 URL 参数中，每次升级必改此值 -->
 <script>
 (function(){
-  var V='5.3', cv=(location.search.match(/[&?]v=([^&]*)/)||[])[1];
+  var V='6.0', cv=(location.search.match(/[&?]v=([^&]*)/)||[])[1];
   if(cv&&cv!==V){ location.replace(location.pathname); return; }
   if(!cv){ location.replace(location.pathname+'?v='+V+'#'+Date.now()); return; }
   console.log('%c[TRADE-DASH] ✅ v'+V+' (cache-fresh)', 'color:green;font-size:14px;font-weight:bold');
@@ -1847,13 +1847,13 @@ async function extractLocalJson(file, api){
   return await res.json();
 }
 /* ========== 双合同合并模块 v5.2（提取不过滤isMyCo·写入时才检查·诊断日志）========== */
-console.log('%c[TRADE-DASH] v5.3 dual-module loaded', 'color:#dc2626;font-weight:bold');
+console.log('%c[TRADE-DASH] v6.0 dual-module loaded', 'color:#059669;font-weight:bold');
 setTimeout(function(){
   var el=document.getElementById('dualMerge');
   if(el){
     var vb=document.createElement('div');
     vb.style.cssText='display:inline-block;background:#059669;color:#fff;padding:2px 12px;border-radius:12px;font-size:13px;margin-left:8px;vertical-align:middle;font-weight:bold';
-    vb.textContent='v5.3 ✓';
+    vb.textContent='v6.0 ✓';
     var ph=el.previousElementSibling;
     if(ph&&ph.querySelector('.dc-head'))ph.querySelector('.dc-head').appendChild(vb); else el.parentNode.insertBefore(vb,el);
   }
@@ -1890,67 +1890,51 @@ async function handleDualFile(side,file){
     /* 存储原始数据 */
     dualResults[side]=data;
 
-    /* ====== 内联提取：角色判定 ====== */
-    // 用方括号访问中文属性名（避免编码问题）
-    var roleVal=data['我方角色'];
-    console.log('[v5] side='+side+' 我方角色 raw=',JSON.stringify(roleVal),'type=',typeof roleVal);
-    var role='';
-    if(roleVal&&String(roleVal).indexOf('买')>=0){role='down';console.log('[v5] side='+side+' → role=down (买方)');}
-    else if(roleVal&&String(roleVal).indexOf('卖')>=0){role='up';console.log('[v5] side='+side+' → role=up (卖方)');}
-    else{
-      // 回退：检查上游/下游公司字段
-      var upCoRaw=data['上游公司'];if(upCoRaw)upCoRaw=String(upCoRaw).trim();
-      var downCoRaw=data['下游公司'];if(downCoRaw)downCoRaw=String(downCoRaw).trim();
-      if(upCoRaw&&!isMyCo(upCoRaw)){role='up';console.log('[v5] side='+side+' → role=up (fallback 上游非宽东方)');}
-      else if(downCoRaw&&!isMyCo(downCoRaw)){role='down';console.log('[v5] side='+side+' → role=down (fallback 下游非宽东方)');}
-      else{console.log('[v5] side='+side+' → role=? (无法判定)');}
-    }
-
-    /* ====== 内联提取：对手方（v5.2：提取阶段不过滤isMyCo，写入时才检查）===== */
-    var oc='';
-    // L1: 对手方（直接取，不过滤）
-    var c1=data['对手方'];if(c1&&typeof c1==='string')c1=c1.trim();
-    console.log('[v5] side='+side+' L1 对手方=',JSON.stringify(c1));
-    if(c1){oc=c1;console.log('[v5] side='+side+' ✓ L1 HIT 对手方='+oc);}
-    // L2: 上游公司
-    if(!oc){var c2=data['上游公司'];if(c2&&typeof c2==='string')c2=c2.trim();console.log('[v5] L2 上游公司=',JSON.stringify(c2));if(c2){oc=c2;console.log('[v5] ✓ L2 HIT');}}
-    // L3: 下游公司
-    if(!oc){var c3=data['下游公司'];if(c3&&typeof c3==='string')c3=c3.trim();console.log('[v5] L3 下游公司=',JSON.stringify(c3));if(c3){oc=c3;console.log('[v5] ✓ L3 HIT');}}
-    // L4: 全字段扫描
-    if(!oc){
-      console.log('[v5] L4 scanning all',keys.length,'fields...');
-      for(var li=0;li<keys.length;li++){
-        var fv=data[keys[li]];
-        if(typeof fv==='string'&&fv.length>2&&fv.length<80&&/[\u4e00-\u9fa5]/.test(fv)&&/公司|企业|集团|有限|科技/.test(fv)){
-          oc=fv.trim();console.log('[v5] ✓ L4 HIT field['+keys[li]+']='+oc);break;
-        }
+    /* ====== v6：锚定我方六家，取“另一家”为对手方（不再信任AI的“我方角色”）====== */
+    // 1) 收集所有公司名候选
+    var nameFields=['对手方','上游公司','下游公司'];
+    var candidates=[];
+    nameFields.forEach(function(k){ var v=data[k]; if(v&&typeof v==='string'&&v.trim()) candidates.push(v.trim()); });
+    // 全字段扫描兜底（抓取任何像公司名的字段）
+    keys.forEach(function(k){
+      var v=data[k];
+      if(typeof v==='string'&&v.length>3&&v.length<60&&/公司|集团|企业|有限|科技|新能源|实业/.test(v)&&!/账期|开票|条款|月份|板块|角色|金额|应收|应付/.test(k)){
+        if(candidates.indexOf(v.trim())<0) candidates.push(v.trim());
       }
-      if(!oc)console.log('[v5] ✗ ALL LEVELS FAILED');
-    }
+    });
+    candidates=candidates.filter(function(c,i){return candidates.indexOf(c)===i;}); // 去重
+    console.log('[v6] side='+side+' nameCandidates=',JSON.stringify(candidates));
 
-    /* 抽取质量自检：AI 把"我方自己"当成对手方 → 这份合同识别失败（常见于浏览器文字层错乱） */
-    var _rawOc=data['对手方'];
-    if(_rawOc&&typeof _rawOc==='string'&&isMyCo(_rawOc.trim())){
-      console.error('[v5] ⚠️ EXTRACT-FAIL: 对手方竟是我方自己('+_rawOc.trim()+')，本合同识别失败');
-      st.textContent='⚠️ 本合同识别异常（对手方=我方自己），请手动填写或重传';
+    // 2) 剔除我方六家 → 对手方（这就是“合同的另一家公司”）
+    var others=candidates.filter(function(c){return !isMyCo(c);});
+    var oc=others.length?others[0]:'';
+    console.log('[v6] side='+side+' → counterparty(非我方)=',JSON.stringify(oc),' | 我方候选=',JSON.stringify(candidates.filter(isMyCo)));
+
+    // 3) 抽取失败：AI 只认出我方或啥都没认出（典型：浏览器文字层错乱，把宽东方自己当对手方）
+    if(!oc){
+      console.error('[v6] ⚠️ EXTRACT-FAIL: 未找到非我方对手方');
+      st.textContent='⚠️ 本合同未识别到对手方（可能文字层错乱），请手动填写或重传';
       st.style.color='var(--danger)';
       dualResults[side]=Object.assign({},data,{_extractFailed:true});
-      return; // 不再合并，避免污染另一条正确数据
+      return;
     }
 
-    /* 金额提取 */
+    // 4) 金额（价格）：上游应收 或 下游应付，清洗成纯数字串
     var amt='';
-    if(role==='up'){var av=data['上游应收金额'];if(av&&String(av).trim())amt=String(av).trim();}
-    else if(role==='down'){var av2=data['下游应付金额'];if(av2&&String(av2).trim())amt=String(av2).trim();}
-    console.log('[v5] side='+side+' → oc='+JSON.stringify(oc)+' role='+role+' amt='+JSON.stringify(amt));
+    var av=data['上游应收金额']; if(av&&String(av).trim())amt=String(av).trim();
+    if(!amt){var dv=data['下游应付金额']; if(dv&&String(dv).trim())amt=String(dv).trim();}
+    amt=amt.replace(/[^\d.]/g,'');
+    var rawRole=data['我方角色']||'';
+    console.log('[v6] side='+side+' → oc='+JSON.stringify(oc)+' amount='+amt+' rawRole='+JSON.stringify(rawRole));
 
-    /* 状态栏显示 */
-    var rtxt=role==='down'?'我方=买方(→下游)':(role==='up'?'我方=卖方(→上游)':'已抽取');
-    st.textContent='✓ '+(oc||'?')+(!oc?' ⚠️对手方空':'')+' · '+rtxt;
-    st.style.color=oc?'var(--ok)':'#e5a000';
+    // 5) 存储（v6 结构）：对手方 + 价格 + AI原始角色（仅作兜底/参考）
+    dualResults[side]={counterparty:oc, amount:amt, rawRole:rawRole, raw:data};
+    st.textContent='✓ '+oc+(amt?' · ¥'+amt:'')+' · 待合并定上下游';
+    st.style.color='var(--ok)';
 
-    /* 执行合并 */
-    try{doMergeV5();}catch(me){st.textContent='合并错('+me.name+')';st.style.color='#e5a000';console.error('[v5-merge-err]',me.stack);}
+    /* 执行合并（比价法：见 doMergeV6） */
+    try{doMergeV6();}catch(me){st.textContent='合并错('+me.name+')';st.style.color='#e5a000';console.error('[v6-merge-err]',me.stack);}
+
 
   }catch(e){st.textContent='错误:'+e.name;st.style.color='var(--danger)';console.error('[v5-extract-err]',e.stack);}
 }
@@ -1971,118 +1955,103 @@ function isMyCo(n){
 }
 
 /* ====== 合并逻辑 v5（全内联）===== */
-function doMergeV5(){
-  var upData=dualResults.up, downData=dualResults.down;
-  if(!upData&&!downData)return;
+/* ====== 合并逻辑 v6（比价法：金额低=下游采购，高=上游销售）===== */
+var _mergeState=null;
+function doMergeV6(){
+  var up=dualResults.up, down=dualResults.down;
+  if(!up&&!down)return;
+  var items=[];
+  if(up&&up.counterparty)items.push({side:'up',co:up.counterparty,amt:up.amount,rawRole:up.rawRole});
+  if(down&&down.counterparty)items.push({side:'down',co:down.counterparty,amt:down.amount,rawRole:down.rawRole});
 
-  /* 提取两份合同的数据（内联，不复用函数） */
-  var upRole='', downRole='', upOc='', downOc='', upAmt='', downAmt='';
+  var fUpCo='',fUpAmt='',fDownCo='',fDownAmt='', method='';
 
-  if(upData){
-    var rv=upData['我方角色'];
-    if(rv&&String(rv).indexOf('卖')>=0)upRole='up';
-    else if(rv&&String(rv).indexOf('买')>=0)upRole='down';
-    else{
-      var uc=upData['上游公司'];if(uc&&!isMyCo(String(uc)))upRole='up';
-      else{var dc=upData['下游公司'];if(dc&&!isMyCo(String(dc)))upRole='down';}
+  if(items.length===2){
+    var aRaw=items[0].amt, bRaw=items[1].amt;
+    var aNum=(aRaw&&!isNaN(parseFloat(aRaw)))?parseFloat(aRaw):'';
+    var bNum=(bRaw&&!isNaN(parseFloat(bRaw)))?parseFloat(bRaw):'';
+    if(aNum!==''&&bNum!==''&&aNum===bNum){           // 金额相等 → 用AI角色兜底
+      method='equal-amount';
+      items.forEach(function(it){ assignByRole(it); });
+    } else if(aNum===''||bNum===''){                 // 缺金额 → 用AI角色兜底
+      method='no-amount';
+      items.forEach(function(it){ assignByRole(it); });
+    } else {                                         // 标准比价法
+      method='price-compare';
+      var lo=aNum<bNum?items[0]:items[1], hi=aNum<bNum?items[1]:items[0];
+      fDownCo=lo.co; fDownAmt=lo.amt;                // 低=下游(我找谁买,付钱)
+      fUpCo=hi.co;   fUpAmt=hi.amt;                  // 高=上游(我卖给谁,收钱)
     }
-    // 取对手方（v5.2：提取时不过滤，写入时才检查）
-    var o1=upData['对手方'];if(o1&&typeof o1==='string'&&o1.trim())upOc=o1.trim();
-    if(!upOc){var o2=upData['上游公司'];if(o2&&typeof o2==='string'&&o2.trim())upOc=o2.trim();}
-    if(!upOc){var o3=upData['下游公司'];if(o3&&typeof o3==='string'&&o3.trim())upOc=o3.trim();}
-    // 金额
-    if(upRole==='up'){var a=upData['上游应收金额'];if(a&&String(a).trim())upAmt=String(a).trim();}
-    else if(upRole==='down'){var a2=upData['下游应付金额'];if(a2&&String(a2).trim())upAmt=String(a2).trim();}
+  } else if(items.length===1){
+    method='single';
+    assignByRole(items[0]);
+  }
+  function assignByRole(it){
+    if(/卖/.test(it.rawRole)){ if(!fUpCo){fUpCo=it.co;fUpAmt=it.amt;} }
+    else if(/买/.test(it.rawRole)){ if(!fDownCo){fDownCo=it.co;fDownAmt=it.amt;} }
+    else { if(!fDownCo){fDownCo=it.co;fDownAmt=it.amt;} else if(!fUpCo){fUpCo=it.co;fUpAmt=it.amt;} }
   }
 
-  if(downData){
-    var rv2=downData['我方角色'];
-    if(rv2&&String(rv2).indexOf('卖')>=0)downRole='up';
-    else if(rv2&&String(rv2).indexOf('买')>=0)downRole='down';
-    else{
-      var uc2=downData['上游公司'];if(uc2&&!isMyCo(String(uc2)))downRole='up';
-      else{var dc2=downData['下游公司'];if(dc2&&!isMyCo(String(dc2)))downRole='down';}
-    }
-    var d1=downData['对手方'];if(d1&&typeof d1==='string'&&d1.trim())downOc=d1.trim();
-    if(!downOc){var d2=downData['上游公司'];if(d2&&typeof d2==='string'&&d2.trim())downOc=d2.trim();}
-    if(!downOc){var d3=downData['下游公司'];if(d3&&typeof d3==='string'&&d3.trim())downOc=d3.trim();}
-    if(downRole==='up'){var da=downData['上游应收金额'];if(da&&String(da).trim())downAmt=String(da).trim();}
-    else if(downRole==='down'){var da2=downData['下游应付金额'];if(da2&&String(da2).trim())downAmt=String(da2).trim();}
-  }
+  console.log('%c[v6-merge] method='+method+' ↑='+fUpCo+'('+fUpAmt+') ↓='+fDownCo+'('+fDownAmt+')',(fUpCo&&fDownCo)?'color:#059669':'color:#dc2626');
 
-  console.log('%c[v5-merge] upRole='+upRole+' oc='+upOc+' | downRole='+downRole+' oc='+downOc,'#2563eb');
+  writeFieldV6('c_上游公司', fUpCo, '上游公司');
+  writeFieldV6('c_上游应收金额', fUpAmt, '上游应收金额');
+  writeFieldV6('c_下游公司', fDownCo, '下游公司');
+  writeFieldV6('c_下游应付金额', fDownAmt, '下游应付金额');
 
-  /* 角色映射到最终位置 */
-  var fUpCo='',fUpAmt='',fDownCo='',fDownAmt='';
-  if(upRole==='up'){fUpCo=upOc;fUpAmt=upAmt;}
-  else if(upRole==='down'){fDownCo=upOc;fDownAmt=upAmt;}
-  else if(upOc){if(!fUpCo){fUpCo=upOc;fUpAmt=upAmt;}else if(!fDownCo){fDownCo=upOc;fDownAmt=upAmt;}}
-
-  if(downRole==='up'){fDownCo=downOc;fDownAmt=downAmt;}  // 注意：down槽位的up角色 → 覆盖下游
-  else if(downRole==='down'){fDownCo=downOc;fDownAmt=downAmt;}
-  else if(downOc){if(!fUpCo){fUpCo=downOc;fUpAmt=downAmt;}else if(!fDownCo){fDownCo=downOc;fDownAmt=downAmt;}}
-
-  console.log('%c[v5-merge] FINAL ↑='+fUpCo+' ↓='+fDownCo+' | ↑¥'+fUpAmt+' ↓¥'+fDownAmt,fUpCo&&fDownCo?'#059669':'#dc2626');
-
-  /* 写入表单（v5.1：三重验证写入 + 事件触发 + 延迟回读） */
-  function writeField(id, val, label){
-    var el=$('#'+id);
-    if(!el){console.error('[v5-write] BUG: #'+id+' not found!'); return;}
-    if(!val){console.log('[v5-write] SKIP '+label+' (empty)'); return;}
-    /* v5.2: 唯一的 isMyCo 检查点 */
-    if(typeof isMyCo==='function'&&isMyCo(val)){console.warn('[v5-write] ⛔ BLOCK '+label+' (isMyCo): '+JSON.stringify(val)); return;}
-    /* 写入 */
-    el.value=val;
-    var readBack=el.value;
-    console.log('[v5-write] ✓ '+label+' set='+JSON.stringify(val)+' readBack='+JSON.stringify(readBack)+(readBack===val?' ✓':' ✗ MISMATCH'));
-    /* 触发 input 事件（确保 oninput 监听器执行） */
-    try{el.dispatchEvent(new Event('input',{bubbles:true}));}catch(evErr){console.warn('[v5-write] dispatch err:',evErr.message);}
-    /* 延迟回读：检查是否被覆盖 */
-    setTimeout(function(){
-      var delayed=el.value;
-      if(delayed!==val){
-        console.error('[v5-write] ⚠️ '+label+' WAS OVERWRITTEN! set='+JSON.stringify(val)+' now='+JSON.stringify(delayed));
-        /* 尝试重新写入 */
-        el.value=val;
-        try{el.dispatchEvent(new Event('input',{bubbles:true}));}catch(e2){}
-      }else{
-        console.log('[v5-write] ✓ '+label+' STUCK OK after 150ms');
-      }
-    }, 150);
-  }
-  writeField('c_上游公司', fUpCo, '上游公司');
-  writeField('c_上游应收金额', fUpAmt, '上游应收金额');
-  writeField('c_下游公司', fDownCo, '下游公司');
-  writeField('c_下游应付金额', fDownAmt, '下游应付金额');
-
-  // 公共字段
-  var meta=upData||downData||{};
+  var meta=(up&&up.raw)||(down&&down.raw)||{};
   if(meta['账期'])$('#c_账期').value=meta['账期'];
   if(meta['开票条款'])$('#c_开票条款').value=meta['开票条款'];
   if(meta['月份'])$('#c_月份').value=meta['月份'];
   if(meta['板块'])$('#c_板块').value=meta['板块'];
 
-  // 冲突检测
-  var conflict=(upRole&&downRole&&upRole===downRole&&upRole!=='');
   contractReview();
-  renderMergeV5({upCo:fUpCo,upAmt:fUpAmt,downCo:fDownCo,downAmt:fDownAmt,conflict:conflict,missingUp:!fUpCo,missingDown:!fDownCo});
+
+  _mergeState={upCo:fUpCo,upAmt:fUpAmt,downCo:fDownCo,downAmt:fDownAmt,method:method};
+  renderMergeV6(_mergeState, method!=='price-compare'&&method!=='single');
 }
 
-function renderMergeV5(m){
-  var el=$('#dualMerge');if(!el)return;
+function writeFieldV6(id, val, label){
+  var el=$('#'+id);
+  if(!el){console.error('[v6-write] BUG: #'+id+' not found');return;}
+  if(!val){console.log('[v6-write] SKIP '+label+' (empty)');return;}
+  if(isMyCo(val)){console.warn('[v6-write] ⛔ BLOCK '+label+' (isMyCo): '+val);return;}
+  el.value=val;
+  try{el.dispatchEvent(new Event('input',{bubbles:true}));}catch(e){}
+  console.log('[v6-write] ✓ '+label+'='+val);
+}
+
+function renderMergeV6(s, needConfirm){
+  var el=$('#dualMerge'); if(!el)return;
   el.style.display='block';
-  var ua=num(m.upAmt),da=num(m.downAmt);
+  var ua=num(s.upAmt), da=num(s.downAmt);
   var profit=(ua&&da)?ua-da:null;
-  var h='<div class="dc-merge-row"><span class="dc-m-l">上游销售（我卖给了谁）</span><span class="dc-m-v">'+esc(m.upCo||'—')+'</span><span class="dc-m-a">'+(m.upAmt?fmt(num(m.upAmt)):'—')+'</span></div>';
-  h+='<div class="dc-merge-row"><span class="dc-m-l">下游采购（我找谁买的）</span><span class="dc-m-v">'+esc(m.downCo||'—')+'</span><span class="dc-m-a">'+(m.downAmt?fmt(num(m.downAmt)):'—')+'</span></div>';
+  var h='';
+  h+='<div class="dc-merge-row"><span class="dc-m-l">上游销售（我卖给了谁）</span><span class="dc-m-v">'+esc(s.upCo||'—')+'</span><span class="dc-m-a">'+(s.upAmt?fmt(num(s.upAmt)):'—')+'</span></div>';
+  h+='<div class="dc-merge-row"><span class="dc-m-l">下游采购（我找谁买的）</span><span class="dc-m-v">'+esc(s.downCo||'—')+'</span><span class="dc-m-a">'+(s.downAmt?fmt(num(s.downAmt)):'—')+'</span></div>';
   h+='<div class="dc-merge-row dc-m-total"><span class="dc-m-l">预估毛利</span><span class="dc-m-v"></span><span class="dc-m-a">'+(profit!==null?fmt(profit):'待两份齐全')+'</span></div>';
-  if(m.conflict)h+='<div class="dc-merge-note" style="color:var(--danger)">⚠️ 两份合同同一角色，请检查。</div>';
-  else if(m.missingUp||m.missingDown)h+='<div class="dc-merge-note" style="color:#e5a000">⚠️ 对手方未识别。</div>';
-  else h+='<div class="dc-merge-note" style="color:var(--ok)">✅ 已填入表单，请核对。</div>';
+  if(needConfirm){
+    h+='<div class="dc-merge-note" style="color:#e5a000">⚠️ 金额相等或缺失，上下游按AI角色兜底，请核对后可在表单手动改。</div>';
+  } else {
+    h+='<div class="dc-merge-note" style="color:var(--ok)">✅ 比价法自动填入：金额低=下游采购，高=上游销售。</div>';
+  }
+  h+='<div class="dc-merge-actions" style="margin-top:8px"><button id="dcFlip" class="btn small" style="font-size:12px">⇅ 上下游对调（如实际为亏损交易）</button></div>';
   el.innerHTML=h;
+  var flip=$('#dcFlip');
+  if(flip)flip.onclick=function(){
+    var t=_mergeState;
+    _mergeState={upCo:t.downCo,upAmt:t.downAmt,downCo:t.upCo,downAmt:t.upAmt,method:(t.method||'')+'-flipped'};
+    writeFieldV6('c_上游公司',_mergeState.upCo,'上游公司');
+    writeFieldV6('c_上游应收金额',_mergeState.upAmt,'上游应收金额');
+    writeFieldV6('c_下游公司',_mergeState.downCo,'下游公司');
+    writeFieldV6('c_下游应付金额',_mergeState.downAmt,'下游应付金额');
+    contractReview();
+    renderMergeV6(_mergeState,true);
+    if(typeof toast==='function')toast('已对调上下游，请核对');
+  };
 }
 window.onerror=function(msg,src,line,col,err){console.error('[GLOBAL-ERR]',msg,'\n@',src,':',line,':',col);return false;};
-/* ========== 双合同模块 v5 结束 ========== */
+/* ========== 双合同模块 v6 结束 ========== */
 
 /* ---------- 附件（合同/发票保存与查看） ---------- */
 const ATT_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px"><path d="M21.44 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l9.19-9.19a3 3 0 0 1 4.24 4.24l-9.2 9.19a1 1 0 0 1-1.41-1.41l8.49-8.49"/></svg>';
