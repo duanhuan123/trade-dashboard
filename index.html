@@ -1822,7 +1822,8 @@ async function extractLocalJson(file, api){
   if(!res.ok) throw new Error('HTTP '+res.status);
   return await res.json();
 }
-/* ========== 双合同合并模块（v4 重写：简洁防御版）========== */
+/* ========== 双合同合并模块（v4.1 重写：简洁防御版）========== */
+console.log('[TRADE-DASH] v4.1 loaded at', new Date().toLocaleTimeString());
 let dualResults = { up:null, down:null };
 function bindDualDrop(dropId, inputId, side){
   const d=$('#'+dropId), i=$('#'+inputId);
@@ -1844,15 +1845,16 @@ function _safeOc(data){
   for(const c of candidates){ if(c && typeof c === 'string' && c.trim() && !_isMyLocal(c)) return c.trim(); }
   return '';
 }
-// 判定角色（买方→下游 / 卖方→上游）
+// 判定角色（买方→下游 / 卖方→上游）— 兼容 AI 返回的各种格式
 function _safeRole(data){
-  const r = data.我方角色;
-  if(r === '买方') return 'down';
-  if(r === '卖方') return 'up';
+  const r = String(data.我方角色 || '');
+  // 精确匹配 + 包含匹配（AI 可能返回 '买方（需方）' 等）
+  if(r.includes('买')) return 'down';
+  if(r.includes('卖')) return 'up';
   // 回退：看哪个公司字段非宽东方
   if(data.上游公司 && !_isMyLocal(String(data.上游公司))) return 'up';
   if(data.下游公司 && !_isMyLocal(String(data.下游公司))) return 'down';
-  return 'up'; // 默认归上游
+  return ''; // 不再默认，空值表示无法判定
 }
 // 取金额
 function _safeAmt(data, role){
@@ -1892,12 +1894,28 @@ function _doMerge(){
   const downOc = downData ? _safeOc(downData) : '';
   const upAmt = upData ? _safeAmt(upData, upRole||'up') : '';
   const downAmt = downData ? _safeAmt(downData, downRole||'down') : '';
+
+  // 日志：帮助调试
+  console.log('[merge] upRole='+upRole+' oc='+upOc+' | downRole='+downRole+' oc='+downOc);
+
   // 角色映射：按实际判定结果分配到 上游/下游（不再依赖槽位顺序）
   let finalUpCo='', finalUpAmt='', finalDownCo='', finalDownAmt='';
   if(upRole === 'up'){ finalUpCo=upOc; finalUpAmt=upAmt; }
   else if(upRole === 'down'){ finalDownCo=upOc; finalDownAmt=upAmt; }
-  if(downRole === 'up'){ finalUpCo=downOc; finalUpAmt=downAmt; }
-  else if(downRole === 'down'){ finalDownCo=downOc; finalDownAmt=downAmt; }
+  else if(upOc){ // role 为空但有对手方 → 默认上游（仅当下游没占位时）
+    if(!finalUpCo) { finalUpCo=upOc; finalUpAmt=upAmt; }
+    else if(!finalDownCo) { finalDownCo=upOc; finalDownAmt=upAmt; }
+  }
+  if(downRole === 'up'){
+    finalUpCo=downOc; finalUpAmt=downAmt; // 上游以卖方（聚合）为准
+  }
+  else if(downRole === 'down'){
+    finalDownCo=downOc; finalDownAmt=downAmt; // 下游以买方（金鸟）为准
+  }
+  else if(downOc){
+    if(!finalUpCo) { finalUpCo=downOc; finalUpAmt=downAmt; }
+    else if(!finalDownCo) { finalDownCo=downOc; finalDownAmt=downAmt; }
+  }
   // 写入表单（仅写非宽东方值）
   if(finalUpCo && !_isMyLocal(finalUpCo)) $('#c_上游公司').value=finalUpCo;
   if(finalUpAmt) $('#c_上游应收金额').value=finalUpAmt;
