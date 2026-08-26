@@ -1789,11 +1789,15 @@ async function handleDualFile(side, file){
     const data=await extractContractJson(file, api);
     if(!data || data.error){ st.textContent='抽取失败：'+(data&&data.error||'未知')+'，请手动录入'; st.style.color='var(--danger)'; return; }
     dualResults[side]=data;
-    let oc=data.对手方 || data.上游公司 || data.下游公司 || '';
-    // 前端兜底：如果对手方含宽东方系，显示为空
-    if(_isMyLocal(oc)) { data.对手方=''; oc = data.上游公司 || data.下游公司 || ''; }
+    // 多级取对手方，每级都过滤宽东方系
+    let oc=data.对手方 || '';
+    if(_isMyLocal(oc)) { data.对手方=''; oc = ''; }
+    if(!oc) { let t = data.上游公司 || ''; if(t && !_isMyLocal(t)) oc = t; }
+    if(!oc) { let t = data.下游公司 || ''; if(t && !_isMyLocal(t)) oc = t; }
+    // 如果所有字段都被过滤了，标记一下（可能是旧版 AI 返回宽东方名）
+    const emptyWarn = !oc ? ' ⚠️未识别到对手方' : '';
     const roleTxt = data.我方角色==='买方' ? '我方=买方（→下游供应商）' : (data.我方角色==='卖方' ? '我方=卖方（→上游客户）' : '已抽取');
-    st.textContent='✓ '+oc+' · '+roleTxt; st.style.color='var(--ok)';
+    st.textContent='✓ '+(oc||'?')+emptyWarn+' · '+roleTxt; st.style.color=emptyWarn ? '#e5a000' : 'var(--ok)';
     mergeDual();
   }catch(e){ st.textContent='错误：'+((e&&e.message)||e); st.style.color='var(--danger)'; }
 }
@@ -1855,14 +1859,25 @@ function _isMyLocal(name){
 // 从单份合同结果里取出「对手方 + 金额」（按 AI 判定的我方角色，自动排除宽东方系）
 function sideOf(r){
   if(!r) return null;
-  // 按优先级取对手方，但必须排除宽东方系
+  // 1. 先确定角色（优先用 AI 判定，不依赖公司名）
+  let role = '';
+  if(r.我方角色 === '买方') role = 'down';
+  else if(r.我方角色 === '卖方') role = 'up';
+  // 2. 按优先级取对手方，必须排除宽东方系
   let oc = r.对手方 || '';
   if(_isMyLocal(oc)) oc = '';
   if(!oc) { oc = r.上游公司 || ''; if(_isMyLocal(oc)) oc = ''; }
   if(!oc) { oc = r.下游公司 || ''; if(_isMyLocal(oc)) oc = ''; }
-  // 金额：根据角色取对应字段
+  // 3. 角色仍未确定时，根据剩余线索推断
+  if(!role && oc) {
+    if(r.上游公司 && ! _isMyLocal(String(r.上游公司))) role = 'up';
+    else if(r.下游公司 && ! _isMyLocal(String(r.下游公司))) role = 'down';
+    else role = 'up'; // 默认归上游，避免空 role 导致冲突误报
+  } else if(!role) {
+    role = 'up'; // 无任何信息时默认上游
+  }
+  // 4. 金额：根据角色取对应字段
   let amt = '';
-  const role = r.我方角色 === '买方' ? 'down' : (r.我方角色 === '卖方' ? 'up' : (oc ? (r.上游公司 && ! _isMyLocal(r.上游公司) ? 'up' : 'down') : ''));
   if(role === 'up') amt = (r.上游应收金额 && String(r.上游应收金额).trim()) ? r.上游应收金额 : '';
   else if(role === 'down') amt = (r.下游应付金额 && String(r.下游应付金额).trim()) ? r.下游应付金额 : '';
   else amt = (r.上游应收金额 && String(r.上游应收金额).trim()) ? r.上游应收金额 : (r.下游应付金额 || '');
@@ -1880,7 +1895,13 @@ function mergeDual(){
   setDualVal('c_开票条款', meta.开票条款);
   setDualVal('c_月份', meta.月份);
   setDualVal('c_板块', meta.板块);
-  const conflict = (ups && downs && ups.role === downs.role);
+  // 冲突检测：仅当两份都有明确角色且相同时才报冲突（空 role 不触发）
+  const hasUpRole = ups && ups.role && (ups.role === 'up' || ups.role === 'down');
+  const hasDownRole = downs && downs.role && (downs.role === 'up' || downs.role === 'down');
+  const conflict = hasUpRole && hasDownRole && ups.role === downs.role;
+  // 缺失检测
+  const missingUp = !ups || !ups.oc;
+  const missingDown = !downs || !downs.oc;
   contractReview();
   renderDualMerge(conflict);
 }
@@ -1904,6 +1925,10 @@ function renderDualMerge(conflict){
     + `<div class="dc-merge-row"><span class="dc-m-l">下游采购（我找谁买的）</span><span class="dc-m-v">${esc(downCo)}</span><span class="dc-m-a">${downAmt?fmt(num(downAmt)):'—'}</span></div>`
     + `<div class="dc-merge-row dc-m-total"><span class="dc-m-l">预估毛利</span><span class="dc-m-v"></span><span class="dc-m-a">${profit!==null?fmt(profit):'待两份齐全'}</span></div>`;
   if(conflict){ html += `<div class="dc-merge-note" style="color:var(--danger)">⚠️ 两份合同 AI 判定为同一角色（都为买或都为卖），无法构成转手贸易。请检查：① 是否传反了；② 是否两份都是同一方向合同。正常应一份我方卖出、一份我方买入。</div>`; }
+  else if(missingUp || missingDown){
+    const miss = [missingUp?'上游对手方':'', missingDown?'下游对手方':''].filter(Boolean).join('、');
+    html += `<div class="dc-merge-note" style="color:#e5a000">⚠️ ${miss}未识别到（可能 AI 返回了宽东方系名称被前端过滤）。建议：手动补填缺失字段，或部署新版 Edge Function 后重试。</div>`;
+  }
   else { html += `<div class="dc-merge-note">✅ 已自动填入下方表单（上游=我方客户 / 下游=我方供应商），请核对后点「审核通过」。</div>`; }
   el.innerHTML = html;
 }
