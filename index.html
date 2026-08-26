@@ -6,7 +6,16 @@
 <meta http-equiv="Expires" content="0">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>宽东方贸易经营看板 · v4.3 · v3.2 (Supabase)</title>
+<title>宽东方贸易经营看板 · v4.4 · v3.2 (Supabase)</title>
+<!-- 缓存杀手：版本号内嵌在 URL 参数中，每次升级必改此值 -->
+<script>
+(function(){
+  var V='4.4', cv=(location.search.match(/[&?]v=([^&]*)/)||[])[1];
+  if(cv&&cv!==V){ /* 已带参数但版本不匹配 → 清除参数重载 */ location.replace(location.pathname); return; }
+  if(!cv){ /* 无版本参数 → 带参数强制重载（绕过所有缓存） */ location.replace(location.pathname+'?v='+V+'#'+Date.now()); return; }
+  console.log('%c[TRADE-DASH] ✅ v'+V+' (cache-fresh)', 'color:green;font-size:14px;font-weight:bold');
+})();
+</script>
 <style>
   :root{
     --bg:#f0f2f8; --card:#fff; --ink:#1a1f36; --sub:#5d6b82; --line:#e2e8f0;
@@ -1822,21 +1831,21 @@ async function extractLocalJson(file, api){
   if(!res.ok) throw new Error('HTTP '+res.status);
   return await res.json();
 }
-/* ========== 双合同合并模块（v4.3 重写：可见版本号+完整数据日志+超级回退）========== */
-console.log('%c[TRADE-DASH] v4.3 loaded at ' + new Date().toLocaleTimeString(), 'color:green;font-size:14px;font-weight:bold');
+/* ========== 双合同合并模块（v4.4：缓存自愈+可见版本号+超级回退+完整日志）========== */
+console.log('%c[TRADE-DASH] v4.4 dual-module loaded', 'color:#10b981;font-weight:bold');
 // 在双合同区域显示版本号（缓存一眼可见）
 setTimeout(function(){
   var el = document.getElementById('dualMerge');
   if(el) {
     var vb = document.createElement('div');
     vb.id = 'dualVerBadge';
-    vb.style.cssText = 'display:inline-block;background:#10b981;color:white;padding:1px 8px;border-radius:10px;font-size:11px;margin-left:8px;vertical-align:middle;font-weight:bold';
-    vb.textContent = 'v4.3';
+    vb.style.cssText = 'display:inline-block;background:#10b981;color:white;padding:2px 10px;border-radius:12px;font-size:12px;margin-left:8px;vertical-align:middle;font-weight:bold;box-shadow:0 2px 6px rgba(16,185,129,.3)';
+    vb.textContent = '✓ v4.4';
     var ph = el.previousElementSibling;
     if(ph && ph.querySelector('.dc-head')) { ph.querySelector('.dc-head').appendChild(vb); }
     else { el.parentNode.insertBefore(vb, el); }
   }
-}, 500);
+}, 800);
 let dualResults = { up:null, down:null };
 function bindDualDrop(dropId, inputId, side){
   const d=$('#'+dropId), i=$('#'+inputId);
@@ -1927,8 +1936,8 @@ function _doMerge(){
   const upAmt = upData ? _safeAmt(upData, upRole||'up') : '';
   const downAmt = downData ? _safeAmt(downData, downRole||'down') : '';
 
-  // 日志：帮助调试（v4.3 完整版）
-  console.log('%c[merge-v4.3] upRole='+upRole+' oc='+upOc+' | downRole='+downRole+' oc='+downOc, 'color:#2563eb');
+  // 日志：帮助调试（v4.4 完整版）
+  console.log('%c[merge-v4.4] upRole='+upRole+' oc='+upOc+' | downRole='+downRole+' oc='+downOc, 'color:#2563eb');
 
   // 角色映射：按实际判定结果分配到 上游/下游（不再依赖槽位顺序）
   let finalUpCo='', finalUpAmt='', finalDownCo='', finalDownAmt='';
@@ -1951,7 +1960,7 @@ function _doMerge(){
     else if(!finalDownCo) { finalDownCo=downOc; finalDownAmt=downAmt; console.log('[merge] step2b: down→default-down', downOc); }
   }
 
-  console.log('%c[merge-v4.3] FINAL: upCo='+finalUpCo+' | downCo='+finalDownCo+' | upAmt='+finalUpAmt+' | downAmt='+finalDownAmt, finalUpCo ? 'color:green' : 'color:red');
+  console.log('%c[merge-v4.4] FINAL: upCo='+finalUpCo+' | downCo='+finalDownCo+' | upAmt='+finalUpAmt+' | downAmt='+finalDownAmt, finalUpCo ? 'color:green' : 'color:red');
 
   // 写入表单（仅写非宽东方值）
   const elUp = $('#c_上游公司');
