@@ -1789,20 +1789,24 @@ async function handleDualFile(side, file){
   const MB=(file.size/1048576).toFixed(1);
   st.textContent='AI 抽取中…（'+MB+'MB）'; st.style.color='var(--brand)';
   try{
+    // 步骤1：AI抽取
     const data=await extractContractJson(file, api);
     if(!data || data.error){ st.textContent='抽取失败：'+(data&&data.error||'未知')+'，请手动录入'; st.style.color='var(--danger)'; return; }
     dualResults[side]=data;
-    // 多级取对手方，每级都过滤宽东方系
+    // 步骤2：取对手方
     let oc=data.对手方 || '';
     if(_isMyLocal(oc)) { data.对手方=''; oc = ''; }
     if(!oc) { let t = data.上游公司 || ''; if(t && !_isMyLocal(t)) oc = t; }
     if(!oc) { let t = data.下游公司 || ''; if(t && !_isMyLocal(t)) oc = t; }
-    // 如果所有字段都被过滤了，标记一下（可能是旧版 AI 返回宽东方名）
     const emptyWarn = !oc ? ' ⚠️未识别到对手方' : '';
     const roleTxt = data.我方角色==='买方' ? '我方=买方（→下游供应商）' : (data.我方角色==='卖方' ? '我方=卖方（→上游客户）' : '已抽取');
     st.textContent='✓ '+(oc||'?')+emptyWarn+' · '+roleTxt; st.style.color=emptyWarn ? '#e5a000' : 'var(--ok)';
-    mergeDual();
-  }catch(e){ st.textContent='错误：'+((e&&e.message)||e); st.style.color='var(--danger)'; }
+    // 步骤3：合并（单独try隔离）
+    try { mergeDual(); } catch(me) {
+      st.textContent='合并错误('+me.message+')，抽取成功但合并失败'; st.style.color='#e5a000';
+      console.error('[dual-merge] side='+side, me.stack);
+    }
+  }catch(e){ st.textContent='错误['+(e.name||'?')+']:'+(e.message||e); st.style.color='var(--danger)'; console.error('[dual-extract] side='+side, e.stack); }
 }
 async function extractContractJson(file, api){
   if(!api){ throw new Error('未配置 AI 后端地址'); }
@@ -1887,6 +1891,7 @@ function sideOf(r){
   return { oc, amt, role };
 }
 function mergeDual(){
+  try {
   const ups = sideOf(dualResults.up), downs = sideOf(dualResults.down);
   const meta = dualResults.up || dualResults.down || {};
   const collected = { up:null, down:null };
@@ -1907,6 +1912,7 @@ function mergeDual(){
   const missingDown = !downs || !downs.oc;
   contractReview();
   renderDualMerge(conflict);
+  } catch(e) { console.error('[mergeDual]', e.message, e.stack); throw e; }
 }
 function renderDualMerge(conflict){
   const up=dualResults.up, down=dualResults.down;
