@@ -10,7 +10,7 @@
 <!-- 缓存杀手：版本号内嵌在 URL 参数中，每次升级必改此值 -->
 <script>
 (function(){
-  var V='5.1', cv=(location.search.match(/[&?]v=([^&]*)/)||[])[1];
+  var V='5.2', cv=(location.search.match(/[&?]v=([^&]*)/)||[])[1];
   if(cv&&cv!==V){ location.replace(location.pathname); return; }
   if(!cv){ location.replace(location.pathname+'?v='+V+'#'+Date.now()); return; }
   console.log('%c[TRADE-DASH] ✅ v'+V+' (cache-fresh)', 'color:green;font-size:14px;font-weight:bold');
@@ -1831,14 +1831,14 @@ async function extractLocalJson(file, api){
   if(!res.ok) throw new Error('HTTP '+res.status);
   return await res.json();
 }
-/* ========== 双合同合并模块 v5.1（三重验证写入·事件触发·延迟回读诊断）========== */
-console.log('%c[TRADE-DASH] v5.1 dual-module loaded', 'color:#059669;font-weight:bold');
+/* ========== 双合同合并模块 v5.2（提取不过滤isMyCo·写入时才检查·诊断日志）========== */
+console.log('%c[TRADE-DASH] v5.2 dual-module loaded', 'color:#dc2626;font-weight:bold');
 setTimeout(function(){
   var el=document.getElementById('dualMerge');
   if(el){
     var vb=document.createElement('div');
     vb.style.cssText='display:inline-block;background:#059669;color:#fff;padding:2px 12px;border-radius:12px;font-size:13px;margin-left:8px;vertical-align:middle;font-weight:bold';
-    vb.textContent='v5.1 ✓';
+    vb.textContent='v5.2 ✓';
     var ph=el.previousElementSibling;
     if(ph&&ph.querySelector('.dc-head'))ph.querySelector('.dc-head').appendChild(vb); else el.parentNode.insertBefore(vb,el);
   }
@@ -1891,22 +1891,22 @@ async function handleDualFile(side,file){
       else{console.log('[v5] side='+side+' → role=? (无法判定)');}
     }
 
-    /* ====== 内联提取：对手方（四级，每级独立日志）===== */
+    /* ====== 内联提取：对手方（v5.2：提取阶段不过滤isMyCo，写入时才检查）===== */
     var oc='';
-    // L1: 对手方
+    // L1: 对手方（直接取，不过滤）
     var c1=data['对手方'];if(c1&&typeof c1==='string')c1=c1.trim();
-    console.log('[v5] side='+side+' L1 对手方=',JSON.stringify(c1),'isMy=',c1?isMyCo(c1):'N/A');
-    if(c1&&!isMyCo(c1)){oc=c1;console.log('[v5] side='+side+' ✓ L1 HIT 对手方='+oc);}
+    console.log('[v5] side='+side+' L1 对手方=',JSON.stringify(c1));
+    if(c1){oc=c1;console.log('[v5] side='+side+' ✓ L1 HIT 对手方='+oc);}
     // L2: 上游公司
-    if(!oc){var c2=data['上游公司'];if(c2&&typeof c2==='string')c2=c2.trim();console.log('[v5] L2 上游公司=',JSON.stringify(c2),'isMy=',c2?isMyCo(c2):'N/A');if(c2&&!isMyCo(c2)){oc=c2;console.log('[v5] ✓ L2 HIT 上游公司='+oc);}}
+    if(!oc){var c2=data['上游公司'];if(c2&&typeof c2==='string')c2=c2.trim();console.log('[v5] L2 上游公司=',JSON.stringify(c2));if(c2){oc=c2;console.log('[v5] ✓ L2 HIT');}}
     // L3: 下游公司
-    if(!oc){var c3=data['下游公司'];if(c3&&typeof c3==='string')c3=c3.trim();console.log('[v5] L3 下游公司=',JSON.stringify(c3),'isMy=',c3?isMyCo(c3):'N/A');if(c3&&!isMyCo(c3)){oc=c3;console.log('[v5] ✓ L3 HIT 下游公司='+oc);}}
+    if(!oc){var c3=data['下游公司'];if(c3&&typeof c3==='string')c3=c3.trim();console.log('[v5] L3 下游公司=',JSON.stringify(c3));if(c3){oc=c3;console.log('[v5] ✓ L3 HIT');}}
     // L4: 全字段扫描
     if(!oc){
       console.log('[v5] L4 scanning all',keys.length,'fields...');
       for(var li=0;li<keys.length;li++){
         var fv=data[keys[li]];
-        if(typeof fv==='string'&&fv.length>2&&fv.length<80&&/[\u4e00-\u9fa5]/.test(fv)&&!isMyCo(fv)&&/公司|企业|集团|有限|科技/.test(fv)){
+        if(typeof fv==='string'&&fv.length>2&&fv.length<80&&/[\u4e00-\u9fa5]/.test(fv)&&/公司|企业|集团|有限|科技/.test(fv)){
           oc=fv.trim();console.log('[v5] ✓ L4 HIT field['+keys[li]+']='+oc);break;
         }
       }
@@ -1930,10 +1930,19 @@ async function handleDualFile(side,file){
   }catch(e){st.textContent='错误:'+e.name;st.style.color='var(--danger)';console.error('[v5-extract-err]',e.stack);}
 }
 
-/* ====== 宽东方系检测（唯一保留的纯函数）===== */
+/* ====== 宽东方系检测 v5.2（加诊断日志 + 收紧正则）===== */
 function isMyCo(n){
-  if(!n||typeof n!=='string')return false;
-  return /宽东方|Kuandongfang|KDF/i.test(n.trim());
+  if(!n||typeof n!=='string'){console.log('[isMyCo] SKIP (empty/non-string):',JSON.stringify(n));return false;}
+  var t=n.trim();
+  /* 逐项诊断 */
+  var hasKDF=/宽东方/i.test(t);
+  var hasKEn=/Kuandongfang/i.test(t);
+  var hasAbbr=/KDF/i.test(t);
+  var result=hasKDF||hasKEn||hasAbbr;
+  /* 详细日志（方便排查误判） */
+  if(result)console.warn('[isMyCo] ⚠️ MATCH! value='+JSON.stringify(t)+' | 宽东方='+hasKDF+' Kuandongfang='+hasKEn+' KDF='+hasAbbr+' | length='+t.length+' | chars='+Array.from(t).map(function(c){return c.charCodeAt(0);}).join(','));
+  else console.log('[isMyCo] ✗ no-match: '+JSON.stringify(t));
+  return result;
 }
 
 /* ====== 合并逻辑 v5（全内联）===== */
@@ -1952,10 +1961,10 @@ function doMergeV5(){
       var uc=upData['上游公司'];if(uc&&!isMyCo(String(uc)))upRole='up';
       else{var dc=upData['下游公司'];if(dc&&!isMyCo(String(dc)))upRole='down';}
     }
-    // 取对手方（内联）
-    var o1=upData['对手方'];if(o1&&typeof o1==='string'&&o1.trim()&&!isMyCo(o1))upOc=o1.trim();
-    if(!upOc){var o2=upData['上游公司'];if(o2&&typeof o2==='string'&&o2.trim()&&!isMyCo(o2))upOc=o2.trim();}
-    if(!upOc){var o3=upData['下游公司'];if(o3&&typeof o3==='string'&&o3.trim()&&!isMyCo(o3))upOc=o3.trim();}
+    // 取对手方（v5.2：提取时不过滤，写入时才检查）
+    var o1=upData['对手方'];if(o1&&typeof o1==='string'&&o1.trim())upOc=o1.trim();
+    if(!upOc){var o2=upData['上游公司'];if(o2&&typeof o2==='string'&&o2.trim())upOc=o2.trim();}
+    if(!upOc){var o3=upData['下游公司'];if(o3&&typeof o3==='string'&&o3.trim())upOc=o3.trim();}
     // 金额
     if(upRole==='up'){var a=upData['上游应收金额'];if(a&&String(a).trim())upAmt=String(a).trim();}
     else if(upRole==='down'){var a2=upData['下游应付金额'];if(a2&&String(a2).trim())upAmt=String(a2).trim();}
@@ -1969,9 +1978,9 @@ function doMergeV5(){
       var uc2=downData['上游公司'];if(uc2&&!isMyCo(String(uc2)))downRole='up';
       else{var dc2=downData['下游公司'];if(dc2&&!isMyCo(String(dc2)))downRole='down';}
     }
-    var d1=downData['对手方'];if(d1&&typeof d1==='string'&&d1.trim()&&!isMyCo(d1))downOc=d1.trim();
-    if(!downOc){var d2=downData['上游公司'];if(d2&&typeof d2==='string'&&d2.trim()&&!isMyCo(d2))downOc=d2.trim();}
-    if(!downOc){var d3=downData['下游公司'];if(d3&&typeof d3==='string'&&d3.trim()&&!isMyCo(d3))downOc=d3.trim();}
+    var d1=downData['对手方'];if(d1&&typeof d1==='string'&&d1.trim())downOc=d1.trim();
+    if(!downOc){var d2=downData['上游公司'];if(d2&&typeof d2==='string'&&d2.trim())downOc=d2.trim();}
+    if(!downOc){var d3=downData['下游公司'];if(d3&&typeof d3==='string'&&d3.trim())downOc=d3.trim();}
     if(downRole==='up'){var da=downData['上游应收金额'];if(da&&String(da).trim())downAmt=String(da).trim();}
     else if(downRole==='down'){var da2=downData['下游应付金额'];if(da2&&String(da2).trim())downAmt=String(da2).trim();}
   }
@@ -1995,11 +2004,12 @@ function doMergeV5(){
     var el=$('#'+id);
     if(!el){console.error('[v5-write] BUG: #'+id+' not found!'); return;}
     if(!val){console.log('[v5-write] SKIP '+label+' (empty)'); return;}
-    if(isMyCo&&isMyCo(val)){console.log('[v5-write] SKIP '+label+' (isMyCo)'); return;} // isMyCo may not exist in this scope
+    /* v5.2: 唯一的 isMyCo 检查点 */
+    if(typeof isMyCo==='function'&&isMyCo(val)){console.warn('[v5-write] ⛔ BLOCK '+label+' (isMyCo): '+JSON.stringify(val)); return;}
     /* 写入 */
     el.value=val;
     var readBack=el.value;
-    console.log('[v5-write] '+label+' set='+JSON.stringify(val)+' readBack='+JSON.stringify(readBack)+(readBack===val?' ✓':' ✗ MISMATCH'));
+    console.log('[v5-write] ✓ '+label+' set='+JSON.stringify(val)+' readBack='+JSON.stringify(readBack)+(readBack===val?' ✓':' ✗ MISMATCH'));
     /* 触发 input 事件（确保 oninput 监听器执行） */
     try{el.dispatchEvent(new Event('input',{bubbles:true}));}catch(evErr){console.warn('[v5-write] dispatch err:',evErr.message);}
     /* 延迟回读：检查是否被覆盖 */
