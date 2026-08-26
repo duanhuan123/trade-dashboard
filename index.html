@@ -6,7 +6,7 @@
 <meta http-equiv="Expires" content="0">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>宽东方贸易经营看板 · v4.0 · v3.2 (Supabase)</title>
+<title>宽东方贸易经营看板 · v4.3 · v3.2 (Supabase)</title>
 <style>
   :root{
     --bg:#f0f2f8; --card:#fff; --ink:#1a1f36; --sub:#5d6b82; --line:#e2e8f0;
@@ -1822,8 +1822,21 @@ async function extractLocalJson(file, api){
   if(!res.ok) throw new Error('HTTP '+res.status);
   return await res.json();
 }
-/* ========== 双合同合并模块（v4.2 重写：简洁防御版+逐行日志）========== */
-console.log('[TRADE-DASH] v4.2 loaded at', new Date().toLocaleTimeString());
+/* ========== 双合同合并模块（v4.3 重写：可见版本号+完整数据日志+超级回退）========== */
+console.log('%c[TRADE-DASH] v4.3 loaded at ' + new Date().toLocaleTimeString(), 'color:green;font-size:14px;font-weight:bold');
+// 在双合同区域显示版本号（缓存一眼可见）
+setTimeout(function(){
+  var el = document.getElementById('dualMerge');
+  if(el) {
+    var vb = document.createElement('div');
+    vb.id = 'dualVerBadge';
+    vb.style.cssText = 'display:inline-block;background:#10b981;color:white;padding:1px 8px;border-radius:10px;font-size:11px;margin-left:8px;vertical-align:middle;font-weight:bold';
+    vb.textContent = 'v4.3';
+    var ph = el.previousElementSibling;
+    if(ph && ph.querySelector('.dc-head')) { ph.querySelector('.dc-head').appendChild(vb); }
+    else { el.parentNode.insertBefore(vb, el); }
+  }
+}, 500);
 let dualResults = { up:null, down:null };
 function bindDualDrop(dropId, inputId, side){
   const d=$('#'+dropId), i=$('#'+inputId);
@@ -1839,10 +1852,28 @@ function _isMyLocal(name){
   if(!name || typeof name !== 'string') return false;
   return /宽东方|Kuandongfang|KDF/i.test(name.trim());
 }
-// 从 AI 返回结果中安全提取对手方（三级过滤，排除宽东方系）
+// 从 AI 返回结果中安全提取对手方（四级过滤：对手方→上游→下游→全字段扫描）
 function _safeOc(data){
-  const candidates = [data.对手方, data.上游公司, data.下游公司];
-  for(const c of candidates){ if(c && typeof c === 'string' && c.trim() && !_isMyLocal(c)) return c.trim(); }
+  if(!data) return '';
+  // 第一级：对手方
+  var c = data.对手方;
+  if(c && typeof c === 'string' && c.trim() && !_isMyLocal(c)) return c.trim();
+  // 第二级：上游公司（Edge Function 可能清空此字段，但试试）
+  c = data.上游公司;
+  if(c && typeof c === 'string' && c.trim() && !_isMyLocal(c)) return c.trim();
+  // 第三级：下游公司
+  c = data.下游公司;
+  if(c && typeof c === 'string' && c.trim() && !_isMyLocal(c)) return c.trim();
+  // 第四级：全字段扫描——Edge Function sanitizeContract 清空了标准字段时的最后手段
+  var keys = Object.keys(data);
+  for(var i = 0; i < keys.length; i++){
+    var v = data[keys[i]];
+    if(typeof v === 'string' && v.length > 3 && v.length < 50 && /[\u4e00-\u9fa5]/.test(v) && !_isMyLocal(v) && /公司|企业|集团|有限|科技/.test(v)){
+      console.log('[safeOc] L4 fallback found:', keys[i], '=', v.trim());
+      return v.trim();
+    }
+  }
+  console.log('[safeOc] ALL fields exhausted, keys=', keys.join(','));
   return '';
 }
 // 判定角色（买方→下游 / 卖方→上游）— 兼容 AI 返回的各种格式
@@ -1870,8 +1901,9 @@ async function handleDualFile(side, file){
   try{
     const data=await extractContractJson(file, api);
     if(!data || data.error){ st.textContent='抽取失败：'+(data&&data.error||'未知')+'，请手动录入'; st.style.color='var(--danger)'; return; }
-    // 日志：记录 AI 原始返回
-    console.log('[dual] side='+side+' raw:', JSON.stringify(data).slice(0,500));
+    // 日志：记录 AI 原始返回（完整版，v4.3 不截断）
+    console.log('[dual] side='+side+' raw FULL:', JSON.stringify(data, null, 2));
+    console.log('[dual] side='+side+' ALL KEYS:', Object.keys(data).join(', '));
     dualResults[side]=data;
     const oc = _safeOc(data);
     const role = _safeRole(data);
@@ -1895,8 +1927,8 @@ function _doMerge(){
   const upAmt = upData ? _safeAmt(upData, upRole||'up') : '';
   const downAmt = downData ? _safeAmt(downData, downRole||'down') : '';
 
-  // 日志：帮助调试
-  console.log('[merge] upRole='+upRole+' oc='+upOc+' | downRole='+downRole+' oc='+downOc);
+  // 日志：帮助调试（v4.3 完整版）
+  console.log('%c[merge-v4.3] upRole='+upRole+' oc='+upOc+' | downRole='+downRole+' oc='+downOc, 'color:#2563eb');
 
   // 角色映射：按实际判定结果分配到 上游/下游（不再依赖槽位顺序）
   let finalUpCo='', finalUpAmt='', finalDownCo='', finalDownAmt='';
@@ -1919,7 +1951,7 @@ function _doMerge(){
     else if(!finalDownCo) { finalDownCo=downOc; finalDownAmt=downAmt; console.log('[merge] step2b: down→default-down', downOc); }
   }
 
-  console.log('[merge] FINAL: upCo=', finalUpCo, '| downCo=', finalDownCo);
+  console.log('%c[merge-v4.3] FINAL: upCo='+finalUpCo+' | downCo='+finalDownCo+' | upAmt='+finalUpAmt+' | downAmt='+finalDownAmt, finalUpCo ? 'color:green' : 'color:red');
 
   // 写入表单（仅写非宽东方值）
   const elUp = $('#c_上游公司');
