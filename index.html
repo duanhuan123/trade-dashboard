@@ -1790,8 +1790,8 @@ async function handleDualFile(side, file){
     if(!data || data.error){ st.textContent='抽取失败：'+(data&&data.error||'未知')+'，请手动录入'; st.style.color='var(--danger)'; return; }
     dualResults[side]=data;
     const oc=data.对手方 || data.上游公司 || data.下游公司 || '';
-    const role=side==='up'?'我方卖出（客户）':'我方买入（供应商）';
-    st.textContent='✓ '+oc+' · '+role; st.style.color='var(--ok)';
+    const roleTxt = data.我方角色==='买方' ? '我方买入（供应商→下游）' : (data.我方角色==='卖方' ? '我方卖出（客户→上游）' : '已抽取');
+    st.textContent='✓ '+oc+' · '+roleTxt; st.style.color='var(--ok)';
     mergeDual();
   }catch(e){ st.textContent='错误：'+((e&&e.message)||e); st.style.color='var(--danger)'; }
 }
@@ -1844,29 +1844,32 @@ async function extractLocalJson(file, api){
   return await res.json();
 }
 function setDualVal(id, v){ const el=$('#'+id); if(el && v!==undefined && v!==null && v!=='') el.value=v; }
+// 从单份合同结果里取出「对手方 + 金额」（按 AI 判定的我方角色）
+function sideOf(r){
+  if(!r) return null;
+  const oc = r.对手方 || r.上游公司 || r.下游公司 || '';
+  const amt = (r.上游应收金额 && String(r.上游应收金额).trim()) ? r.上游应收金额 : (r.下游应付金额 || '');
+  // 我方角色明确时以角色为准；否则看哪个公司字段非空
+  const role = r.我方角色 === '买方' ? 'down' : (r.我方角色 === '卖方' ? 'up' : (r.上游公司 ? 'up' : 'down'));
+  return { oc, amt, role };
+}
 function mergeDual(){
-  const up=dualResults.up, down=dualResults.down;
-  if(up){
-    // 上游（销售）：取对手方（AI 填在 上游公司 或 下游公司，取决于它判的角色；取非空的那个）
-    const oc = up.上游公司 || up.下游公司 || up.对手方 || '';
-    const amt = up.上游公司 ? (up.上游应收金额||'') : (up.下游应付金额||'');
-    setDualVal('c_上游公司', oc); setDualVal('c_上游应收金额', amt);
-  }
-  if(down){
-    const oc = down.下游公司 || down.上游公司 || down.对手方 || '';
-    const amt = down.下游公司 ? (down.下游应付金额||'') : (down.上游应收金额||'');
-    setDualVal('c_下游公司', oc); setDualVal('c_下游应付金额', amt);
-  }
-  // 月份/账期/开票条款/板块：优先上游，回退下游
-  const meta = up || down || {};
+  const ups = sideOf(dualResults.up), downs = sideOf(dualResults.down);
+  const meta = dualResults.up || dualResults.down || {};
+  const collected = { up:null, down:null };
+  if(ups) collected[ups.role] = ups;
+  if(downs) collected[downs.role] = downs;
+  if(collected.up){ setDualVal('c_上游公司', collected.up.oc); setDualVal('c_上游应收金额', collected.up.amt); }
+  if(collected.down){ setDualVal('c_下游公司', collected.down.oc); setDualVal('c_下游应付金额', collected.down.amt); }
   setDualVal('c_账期', meta.账期);
   setDualVal('c_开票条款', meta.开票条款);
   setDualVal('c_月份', meta.月份);
   setDualVal('c_板块', meta.板块);
+  const conflict = (ups && downs && ups.role === downs.role);
   contractReview();
-  renderDualMerge();
+  renderDualMerge(conflict);
 }
-function renderDualMerge(){
+function renderDualMerge(conflict){
   const up=dualResults.up, down=dualResults.down;
   const el=$('#dualMerge'); if(!el) return;
   if(!up && !down){ el.style.display='none'; return; }
@@ -1877,10 +1880,12 @@ function renderDualMerge(){
   const ua=num(upAmt), da=num(downAmt);
   const profit = (ua&&da)? ua-da : null;
   el.style.display='block';
-  el.innerHTML = `<div class="dc-merge-row"><span class="dc-m-l">上游销售</span><span class="dc-m-v">${esc(upCo)}</span><span class="dc-m-a">${upAmt?fmt(num(upAmt)):'—'}</span></div>`
+  let html = `<div class="dc-merge-row"><span class="dc-m-l">上游销售</span><span class="dc-m-v">${esc(upCo)}</span><span class="dc-m-a">${upAmt?fmt(num(upAmt)):'—'}</span></div>`
     + `<div class="dc-merge-row"><span class="dc-m-l">下游采购</span><span class="dc-m-v">${esc(downCo)}</span><span class="dc-m-a">${downAmt?fmt(num(downAmt)):'—'}</span></div>`
-    + `<div class="dc-merge-row dc-m-total"><span class="dc-m-l">预估毛利</span><span class="dc-m-v"></span><span class="dc-m-a">${profit!==null?fmt(profit):'待两份齐全'}</span></div>`
-    + `<div class="dc-merge-note">已自动填入下方表单，请核对「上游公司 / 下游公司 / 金额」后点「审核通过，入台账」。</div>`;
+    + `<div class="dc-merge-row dc-m-total"><span class="dc-m-l">预估毛利</span><span class="dc-m-v"></span><span class="dc-m-a">${profit!==null?fmt(profit):'待两份齐全'}</span></div>`;
+  if(conflict){ html += `<div class="dc-merge-note" style="color:var(--danger)">⚠️ 两份合同 AI 判定为同一角色（都为买或都为卖），无法构成转手贸易。请检查：① 是否传反了；② 是否两份都是同一方向合同。正常应一份我方卖出、一份我方买入。</div>`; }
+  else { html += `<div class="dc-merge-note">已自动填入下方表单，请核对「上游公司 / 下游公司 / 金额」后点「审核通过，入台账」。</div>`; }
+  el.innerHTML = html;
 }
 
 /* ---------- 附件（合同/发票保存与查看） ---------- */
