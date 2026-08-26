@@ -10,7 +10,7 @@
 <!-- 缓存杀手：版本号内嵌在 URL 参数中，每次升级必改此值 -->
 <script>
 (function(){
-  var V='5.0', cv=(location.search.match(/[&?]v=([^&]*)/)||[])[1];
+  var V='5.1', cv=(location.search.match(/[&?]v=([^&]*)/)||[])[1];
   if(cv&&cv!==V){ location.replace(location.pathname); return; }
   if(!cv){ location.replace(location.pathname+'?v='+V+'#'+Date.now()); return; }
   console.log('%c[TRADE-DASH] ✅ v'+V+' (cache-fresh)', 'color:green;font-size:14px;font-weight:bold');
@@ -1831,14 +1831,14 @@ async function extractLocalJson(file, api){
   if(!res.ok) throw new Error('HTTP '+res.status);
   return await res.json();
 }
-/* ========== 双合同合并模块 v5.0（零函数封装·全内联·方括号属性访问·逐行日志）========== */
-console.log('%c[TRADE-DASH] v5.0 dual-module loaded', 'color:#10b981;font-weight:bold');
+/* ========== 双合同合并模块 v5.1（三重验证写入·事件触发·延迟回读诊断）========== */
+console.log('%c[TRADE-DASH] v5.1 dual-module loaded', 'color:#059669;font-weight:bold');
 setTimeout(function(){
   var el=document.getElementById('dualMerge');
   if(el){
     var vb=document.createElement('div');
     vb.style.cssText='display:inline-block;background:#059669;color:#fff;padding:2px 12px;border-radius:12px;font-size:13px;margin-left:8px;vertical-align:middle;font-weight:bold';
-    vb.textContent='v5.0 ✓';
+    vb.textContent='v5.1 ✓';
     var ph=el.previousElementSibling;
     if(ph&&ph.querySelector('.dc-head'))ph.querySelector('.dc-head').appendChild(vb); else el.parentNode.insertBefore(vb,el);
   }
@@ -1990,11 +1990,35 @@ function doMergeV5(){
 
   console.log('%c[v5-merge] FINAL ↑='+fUpCo+' ↓='+fDownCo+' | ↑¥'+fUpAmt+' ↓¥'+fDownAmt,fUpCo&&fDownCo?'#059669':'#dc2626');
 
-  /* 写入表单 */
-  if(fUpCo&&!isMyCo(fUpCo)){var e=$('#c_上游公司');if(e)e.value=fUpCo;console.log('[v5] WROTE 上游:',fUpCo);}
-  if(fUpAmt){var e2=$('#c_上游应收金额');if(e2)e2.value=fUpAmt;}
-  if(fDownCo&&!isMyCo(fDownCo)){var e3=$('#c_下游公司');if(e3)e3.value=fDownCo;console.log('[v5] WROTE 下游:',fDownCo);}
-  if(fDownAmt){var e4=$('#c_下游应付金额');if(e4)e4.value=fDownAmt;}
+  /* 写入表单（v5.1：三重验证写入 + 事件触发 + 延迟回读） */
+  function writeField(id, val, label){
+    var el=$('#'+id);
+    if(!el){console.error('[v5-write] BUG: #'+id+' not found!'); return;}
+    if(!val){console.log('[v5-write] SKIP '+label+' (empty)'); return;}
+    if(isMyCo&&isMyCo(val)){console.log('[v5-write] SKIP '+label+' (isMyCo)'); return;} // isMyCo may not exist in this scope
+    /* 写入 */
+    el.value=val;
+    var readBack=el.value;
+    console.log('[v5-write] '+label+' set='+JSON.stringify(val)+' readBack='+JSON.stringify(readBack)+(readBack===val?' ✓':' ✗ MISMATCH'));
+    /* 触发 input 事件（确保 oninput 监听器执行） */
+    try{el.dispatchEvent(new Event('input',{bubbles:true}));}catch(evErr){console.warn('[v5-write] dispatch err:',evErr.message);}
+    /* 延迟回读：检查是否被覆盖 */
+    setTimeout(function(){
+      var delayed=el.value;
+      if(delayed!==val){
+        console.error('[v5-write] ⚠️ '+label+' WAS OVERWRITTEN! set='+JSON.stringify(val)+' now='+JSON.stringify(delayed));
+        /* 尝试重新写入 */
+        el.value=val;
+        try{el.dispatchEvent(new Event('input',{bubbles:true}));}catch(e2){}
+      }else{
+        console.log('[v5-write] ✓ '+label+' STUCK OK after 150ms');
+      }
+    }, 150);
+  }
+  writeField('c_上游公司', fUpCo, '上游公司');
+  writeField('c_上游应收金额', fUpAmt, '上游应收金额');
+  writeField('c_下游公司', fDownCo, '下游公司');
+  writeField('c_下游应付金额', fDownAmt, '下游应付金额');
 
   // 公共字段
   var meta=upData||downData||{};
