@@ -524,15 +524,15 @@
       <div class="fld"><label>AI 抽取后端（已自动配置：线上版→Supabase Edge Function 云端；本机→extract_server.py。可手动改成 http://localhost:8787 切回本机）</label><input id="c_api" value="" placeholder="自动检测中…"></div>
       <div id="aiStatus" class="note"></div>
       <div class="dual-contract" id="dualContract">
-        <div class="dc-head"><strong>上下游双合同合并（转手贸易）</strong><span class="dc-hint">同时传上下游两份合同 → 系统自动判定我方角色并合并成一条贸易记录（上游应收 − 下游应付 = 毛利）</span></div>
+        <div class="dc-head"><strong>上下游双合同合并（转手贸易）</strong><span class="dc-hint">同时传两份合同 → 系统自动判定宽东方在每份合同中的角色（卖方=上游/买方=下游），合并成一条记录（上游应收 − 下游应付 = 毛利）</span></div>
         <div class="dc-grid">
           <div class="dc-zone">
-            <div class="file-drop dc-drop" id="dualUpDrop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:24px;height:24px;margin-bottom:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><br>① 上游销售合同<br><span style="font-size:11px">我方卖出 → 客户（如：宽东方-聚合）</span>
+            <div class="file-drop dc-drop" id="dualUpDrop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:24px;height:24px;margin-bottom:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><br>合同①<br><span style="font-size:11px">任意一份（系统自动识别角色）</span>
               <input type="file" id="dualUpFile" accept=".pdf,.docx,.txt,.md,.csv,.png,.jpg,.jpeg" style="display:none"></div>
             <div class="dc-status" id="dualUpStatus">待上传</div>
           </div>
           <div class="dc-zone">
-            <div class="file-drop dc-drop" id="dualDownDrop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:24px;height:24px;margin-bottom:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><br>② 下游采购合同<br><span style="font-size:11px">我方买入 ← 供应商（如：金鸟-宽东方）</span>
+            <div class="file-drop dc-drop" id="dualDownDrop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:24px;height:24px;margin-bottom:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><br>合同②<br><span style="font-size:11px">另一份（顺序不限）</span>
               <input type="file" id="dualDownFile" accept=".pdf,.docx,.txt,.md,.csv,.png,.jpg,.jpeg" style="display:none"></div>
             <div class="dc-status" id="dualDownStatus">待上传</div>
           </div>
@@ -1790,7 +1790,9 @@ async function handleDualFile(side, file){
     if(!data || data.error){ st.textContent='抽取失败：'+(data&&data.error||'未知')+'，请手动录入'; st.style.color='var(--danger)'; return; }
     dualResults[side]=data;
     const oc=data.对手方 || data.上游公司 || data.下游公司 || '';
-    const roleTxt = data.我方角色==='买方' ? '我方买入（供应商→下游）' : (data.我方角色==='卖方' ? '我方卖出（客户→上游）' : '已抽取');
+    // 前端兜底：如果对手方含宽东方系，显示为空
+    if(_isMyLocal(oc)) { data.对手方=''; oc = data.上游公司 || data.下游公司 || ''; }
+    const roleTxt = data.我方角色==='买方' ? '我方=买方（→下游供应商）' : (data.我方角色==='卖方' ? '我方=卖方（→上游客户）' : '已抽取');
     st.textContent='✓ '+oc+' · '+roleTxt; st.style.color='var(--ok)';
     mergeDual();
   }catch(e){ st.textContent='错误：'+((e&&e.message)||e); st.style.color='var(--danger)'; }
@@ -1844,13 +1846,26 @@ async function extractLocalJson(file, api){
   return await res.json();
 }
 function setDualVal(id, v){ const el=$('#'+id); if(el && v!==undefined && v!==null && v!=='') el.value=v; }
-// 从单份合同结果里取出「对手方 + 金额」（按 AI 判定的我方角色）
+// 本地宽东方系检测（前端兜底，防止后端漏放）
+function _isMyLocal(name){
+  if(!name) return false;
+  const s=String(name).trim();
+  return /宽东方|Kuandongfang|KDF/i.test(s);
+}
+// 从单份合同结果里取出「对手方 + 金额」（按 AI 判定的我方角色，自动排除宽东方系）
 function sideOf(r){
   if(!r) return null;
-  const oc = r.对手方 || r.上游公司 || r.下游公司 || '';
-  const amt = (r.上游应收金额 && String(r.上游应收金额).trim()) ? r.上游应收金额 : (r.下游应付金额 || '');
-  // 我方角色明确时以角色为准；否则看哪个公司字段非空
-  const role = r.我方角色 === '买方' ? 'down' : (r.我方角色 === '卖方' ? 'up' : (r.上游公司 ? 'up' : 'down'));
+  // 按优先级取对手方，但必须排除宽东方系
+  let oc = r.对手方 || '';
+  if(_isMyLocal(oc)) oc = '';
+  if(!oc) { oc = r.上游公司 || ''; if(_isMyLocal(oc)) oc = ''; }
+  if(!oc) { oc = r.下游公司 || ''; if(_isMyLocal(oc)) oc = ''; }
+  // 金额：根据角色取对应字段
+  let amt = '';
+  const role = r.我方角色 === '买方' ? 'down' : (r.我方角色 === '卖方' ? 'up' : (oc ? (r.上游公司 && ! _isMyLocal(r.上游公司) ? 'up' : 'down') : ''));
+  if(role === 'up') amt = (r.上游应收金额 && String(r.上游应收金额).trim()) ? r.上游应收金额 : '';
+  else if(role === 'down') amt = (r.下游应付金额 && String(r.下游应付金额).trim()) ? r.下游应付金额 : '';
+  else amt = (r.上游应收金额 && String(r.上游应收金额).trim()) ? r.上游应收金额 : (r.下游应付金额 || '');
   return { oc, amt, role };
 }
 function mergeDual(){
@@ -1873,18 +1888,23 @@ function renderDualMerge(conflict){
   const up=dualResults.up, down=dualResults.down;
   const el=$('#dualMerge'); if(!el) return;
   if(!up && !down){ el.style.display='none'; return; }
-  const upCo = up ? (up.上游公司||up.下游公司||up.对手方||'—') : '（未传）';
-  const upAmt = up ? (up.上游公司?up.上游应收金额:up.下游应付金额||'') : '';
-  const downCo = down ? (down.下游公司||down.上游公司||down.对手方||'—') : '（未传）';
-  const downAmt = down ? (down.下游公司?down.下游应付金额:down.上游应收金额||'') : '';
+  // 用 mergeDual 里已角色映射后的 collected 数据来显示（而非原始槽位）
+  const ups = sideOf(dualResults.up), downs = sideOf(dualResults.down);
+  const collected = { up:null, down:null };
+  if(ups) collected[ups.role] = ups;
+  if(downs) collected[downs.role] = downs;
+  const upCo = collected.up ? collected.up.oc : '—';
+  const upAmt = collected.up ? collected.up.amt : '';
+  const downCo = collected.down ? collected.down.oc : '—';
+  const downAmt = collected.down ? collected.down.amt : '';
   const ua=num(upAmt), da=num(downAmt);
   const profit = (ua&&da)? ua-da : null;
   el.style.display='block';
-  let html = `<div class="dc-merge-row"><span class="dc-m-l">上游销售</span><span class="dc-m-v">${esc(upCo)}</span><span class="dc-m-a">${upAmt?fmt(num(upAmt)):'—'}</span></div>`
-    + `<div class="dc-merge-row"><span class="dc-m-l">下游采购</span><span class="dc-m-v">${esc(downCo)}</span><span class="dc-m-a">${downAmt?fmt(num(downAmt)):'—'}</span></div>`
+  let html = `<div class="dc-merge-row"><span class="dc-m-l">上游销售（我卖给了谁）</span><span class="dc-m-v">${esc(upCo)}</span><span class="dc-m-a">${upAmt?fmt(num(upAmt)):'—'}</span></div>`
+    + `<div class="dc-merge-row"><span class="dc-m-l">下游采购（我找谁买的）</span><span class="dc-m-v">${esc(downCo)}</span><span class="dc-m-a">${downAmt?fmt(num(downAmt)):'—'}</span></div>`
     + `<div class="dc-merge-row dc-m-total"><span class="dc-m-l">预估毛利</span><span class="dc-m-v"></span><span class="dc-m-a">${profit!==null?fmt(profit):'待两份齐全'}</span></div>`;
   if(conflict){ html += `<div class="dc-merge-note" style="color:var(--danger)">⚠️ 两份合同 AI 判定为同一角色（都为买或都为卖），无法构成转手贸易。请检查：① 是否传反了；② 是否两份都是同一方向合同。正常应一份我方卖出、一份我方买入。</div>`; }
-  else { html += `<div class="dc-merge-note">已自动填入下方表单，请核对「上游公司 / 下游公司 / 金额」后点「审核通过，入台账」。</div>`; }
+  else { html += `<div class="dc-merge-note">✅ 已自动填入下方表单（上游=我方客户 / 下游=我方供应商），请核对后点「审核通过」。</div>`; }
   el.innerHTML = html;
 }
 
