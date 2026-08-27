@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- V7.1-Candidate · 合同AI抽取整改版（待应用/部署） -->
 <html lang="zh-CN">
 <head>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -1753,7 +1754,7 @@ async function aiExtractEdge(kind, file, fields, mapIds, api){
       }
       await doc.destroy();
       if(text.trim().length>30){ body={kind, mode:'text', text}; }
-      else if(pageImages.length){ body={kind, mode:'vision', images:pageImages.slice(0,4)}; }
+      else if(pageImages.length){ body={kind, mode:'vision', images:pageImages}; }
       else { say('PDF 解析失败，请手动录入','var(--danger)'); return; }
     } else if(low.match(/\.(png|jpe?g|bmp|webp)$/)){
       const b64=await fileToB64(file); body={kind, mode:'vision', images:[b64.split(',')[1]]};
@@ -1778,280 +1779,653 @@ async function aiExtractEdge(kind, file, fields, mapIds, api){
     say(m,'var(--danger)'); toast('AI 抽取未完成');
   }
 }
-function aiExtractContract(f){ aiExtract('contract', f, ['上游公司','下游公司','上游应收金额','下游应付金额','账期','开票条款','月份','板块'], {上游公司:'c_上游公司',下游公司:'c_下游公司',上游应收金额:'c_上游应收金额',下游应付金额:'c_下游应付金额',账期:'c_账期',开票条款:'c_开票条款',月份:'c_月份',板块:'c_板块'}); }
+/* aiExtractContract 已在下方 v7 模块中重定义为 → v7ExtractSingle（走事实抽取管线，不再直接写 AI 的上下游） */
 function aiExtractInvoice(f){ aiExtract('invoice', f, ['发票类型','销售方','购买方','金额','发票号','日期'], {发票类型:'i_类型',销售方:'i_销售方',购买方:'i_购买方',金额:'i_金额',发票号:'i_发票号',日期:'i_日期'}); }
 
 /* ---------- 上下游双合同合并抽取 ---------- */
-/* ========== AI 抽取函数（双合同+单合同共用）========== */
-async function extractContractJson(file, api){
-  if(!api){ throw new Error('未配置 AI 后端地址'); }
-  if(api.includes('/functions/v1/ai-extract')){ return await extractEdgeJson(file, api); }
-  return await extractLocalJson(file, api);
+/* ========== 宽东方贸易工作台 · 合同 AI 抽取 v7.0（整改版）==========
+   整改重点（对应验收指令）：
+   ① 统一 documentContent{text,tables,images,pages}，所有格式本地二次扫描均有效
+   ② 关系 unknown 绝不默认填下游，改为人工确认按钮
+   ③ 对手方评分机制，禁止 sort+others[0] 直接写入
+   ④ isMyCompany 分级匹配（标准化完全匹配→别名前缀→备案），禁止靠通用词误判
+   ⑤ PDF 先读文字层质检，不合格才渲染全部页（无 4 页限制）送 Vision
+   ⑥ Word/Excel 由 Edge 真解析；前端不再把 docx/xlsx 当 raw 直接信任
+   ⑦ 调试面板补齐所有追溯字段
+   ⑧ 后端返回 v6 旧结构时明确提示「请升级后端」，不静默兼容
+   ========================================================= */
+
+console.log('%c[TRADE-DASH] v7.0 contract-extraction (revised) loaded','color:#7c3aed;font-weight:bold');
+
+/* 调试面板 / 状态样式（内联注入，避免依赖既有 CSS） */
+(function(){
+  var s=document.createElement('style');
+  s.textContent='.dc-debug{margin-top:10px;border:1px solid #e5e7eb;border-radius:8px;padding:8px;background:#fafafa}.dc-debug summary{cursor:pointer;font-weight:bold;color:#7c3aed}.dc-dbg-block{border-bottom:1px dashed #ddd;padding:6px 0}.dc-dbg-row{font-size:12px;line-height:1.6;word-break:break-all}.dc-pre{background:#111;color:#0f0;padding:6px;border-radius:4px;max-height:160px;overflow:auto;font-size:11px;white-space:pre-wrap}.dc-warn{color:#e5a000}.dc-ok{color:#059669}.dc-merge-row{display:flex;gap:8px;padding:4px 0}.dc-m-l{flex:1}.dc-m-v{width:42%}.dc-m-a{width:120px;text-align:right}.dc-merge-actions{margin-top:8px}.dc-sel{margin:4px 0}.dc-sel button{margin-right:6px}';
+  document.head.appendChild(s);
+})();
+
+/* ========== V7 PURE LOGIC START（无 DOM 依赖，可被 Node 测试提取）========== */
+
+/* 明确宽东方公司库（v7 第十八节：禁止用 新能源/科技/深圳 等通用词判断）*/
+var MY_COMPANY_ALIASES = [
+  '宽东方','宽东方科技','宽东方智造','宽东方智造新能源',
+  '宽东方贸易有限公司','宽东方贸易','深圳宽东方','北京宽东方',
+  'Kuandongfang','KDF'
+];
+
+/* 标准化：去空白 / 统一括号 / 全半角，便于精确匹配 */
+function normalizeCompanyName(raw){
+  if(!raw||typeof raw!=='string') return '';
+  return raw.trim().replace(/\s+/g,'')
+    .replace(/[（]/g,'(').replace(/[）]/g,')')
+    .replace(/[，,]/g,',')
+    .replace(/[（(]/g,'').replace(/[)）]/g,''); // 括号统一去除，避免(深圳)干扰
 }
-async function extractEdgeJson(file, api){
-  const low=file.name.toLowerCase();
-  const url=api.replace(/\/+$/,'');
-  const ctl=new AbortController(); const tm=setTimeout(()=>ctl.abort(),120000);
-  let body;
+
+/* v7 唯一判定（项4）：分级匹配，绝不靠通用词。
+   一级：标准化完全匹配（含括号变体）
+   二级：明确别名前缀匹配（"深圳宽东方智造科技有限公司".startsWith("深圳宽东方")）
+   三级：备案公司名称匹配（别名库即备案）
+   四级：其余一律视为非我方（需人工确认），不猜测
+   关键：isMyCompany("深圳聚合快充新能源有限公司") 必为 false */
+function isMyCompany(name){
+  if(!name||typeof name!=='string') return false;
+  var s=normalizeCompanyName(name);
+  if(!s) return false;
+  for(var i=0;i<MY_COMPANY_ALIASES.length;i++){
+    var a=normalizeCompanyName(MY_COMPANY_ALIASES[i]);
+    if(!a) continue;
+    if(s===a) return true;                         // 一级：完全匹配
+    if(a.length>=2 && s.indexOf(a)===0){           // 二级：别名前缀匹配
+      var tail=s.slice(a.length);
+      // 前缀之后必须像公司名（含公司/集团/科技等后缀，或为空），避免"宽东方路1号"误中
+      if(tail==='' || /(公司|集团|科技|企业|有限|股份|贸易|实业|智造|新能源|供应链|通讯|网络|电子)/.test(tail)) return true;
+    }
+  }
+  return false;
+}
+
+/* 候选评分（项3）：多候选时必须评分，禁止 sort+others[0] */
+function scoreCandidate(c){
+  var role=(c.role||'未知');
+  var score=1; // 候选/未知 基线
+  if(role==='甲方'||role==='乙方') score=5;
+  else if(role==='买方'||role==='卖方') score=4;
+  else if(role==='供方'||role==='需方') score=3;
+  else if(role==='客户'||role==='供应商') score=2;
+  var ev=(c.evidence||'')+' '+(c.name||'');
+  // 契约角色出现在证据里，加分
+  if(/甲方|乙方|买方|卖方|供方|需方|采购方|销售方/.test(ev)) score+=2;
+  // 辅助主体（银行/物流/保险/律所/会计等）重扣分，不能当交易对手
+  if(/银行|开户|账号|户名/.test(ev)) score-=10;
+  if(/物流|快递|货运|运输|仓储/.test(ev)) score-=10;
+  if(/保险/.test(ev)) score-=10;
+  if(/律所|律师|会计师|审计|税务/.test(ev)) score-=10;
+  return score;
+}
+
+/* 对手方识别（项3）：唯一自动确认；最高明显领先可建议；分数接近必须人工确认 */
+function identifyCounterparty(cands){
+  var others=cands.filter(function(c){return !isMyCompany(c.name);});
+  var scored=others.map(function(c){return {c:c,score:scoreCandidate(c)};})
+    .filter(function(x){return x.score>-5;}); // 剔除明确辅助主体
+  if(scored.length===0)
+    return {counterparty:null,status:'no-counterparty',reason:'未识别到非我方交易主体',candidates:[]};
+  scored.sort(function(a,b){return b.score-a.score;});
+  if(scored.length===1)
+    return {counterparty:scored[0].c,status:'ok',reason:'唯一非我方交易主体',candidates:scored.map(function(x){return x.c;})};
+  var top=scored[0].score, second=scored[1].score;
+  if(top-second>=3)
+    return {counterparty:scored[0].c,status:'suggest',reason:'多个候选，最高分('+scored[0].c.name+')明显领先，建议但需确认',candidates:scored.map(function(x){return x.c;})};
+  return {counterparty:null,status:'need-confirm',
+    reason:'多个候选分数接近，需人工确认（'+scored.map(function(x){return x.c.name+'('+x.score+')';}).join('， ')+'）',
+    candidates:scored.map(function(x){return x.c;})};
+}
+
+/* 本地公司名兜底扫描（项1/15/十六节）：从统一 documentContent.text 中提取公司候选
+   无论 AI 是否识别到，只要原文含公司名就能补回 */
+/* 公文散文误抽拦截（V7.1 真件缺陷修复）：
+   正文如"甲方收货时应签字并加盖公司章"会被"角色词+任意文字+公司"正则整段吞下，
+   产出假公司名"收货时应签字并加盖公司"，与真实对手方同分导致误判为"多候选需确认"。
+   仅拦截绝不可能出现在企业字号中的公文动词/条款用语（二字以上词组），
+   避免误杀"应流""时代""支付宝""金鸟"等合法字号；
+   "运输/物流/保险/银行"等合法字号成分不拦截，辅助主体由 scoreCandidate 扣分排除。 */
+var PROSE_BAN = /(签字|签署|盖章|加盖|公章|印章|收货|发货|交货|到货|验收|应当|应该|不得|禁止|负责|承担|违约|赔偿|索赔|逾期|质保|保修|另行|送达|以下简称|本合同|本协议|双方|甲方|乙方|如下|所示|之日|起算|予以|时应|后应|内应|并加|应签|应加|方可|即视为)/;
+function looksLikeProse(name){
+  if(!name) return true;
+  if(PROSE_BAN.test(name)) return true;
+  var stem=name.replace(/(有限责任公司|股份有限公司|有限合伙|合伙企业|有限公司|集团|公司|企业)$/,'');
+  if(stem.length<2) return true;
+  return false;
+}
+
+/* 前导正文剥离（V7.1 真件缺陷修复#2）：中文无词边界，正则会把公司名前的正文一起吞下，
+   如"本合同由深圳聚合快充新能源有限公司"→必须还原为"深圳聚合快充新能源有限公司"，
+   否则会把带前缀的错误公司名写入看板字段。
+   逐层剥离**位于开头**的引导词（只剥前缀，不在名称中间乱切），
+   因此"北京和众科技有限公司"（以"北京"开头）不受影响。 */
+var LEAD_PREFIX = ['本合同','本协议','以下简称','双方','甲方','乙方','供方','需方','买方','卖方',
+                   '买受方','出卖方','采购方','销售方','收款方','付款方','委托方','受托方','签订',
+                   '由','向','经','按','据','系'];
+function cleanCompanyName(n){
+  if(!n) return n;
+  var s=String(n).trim(), changed=true, guard=0;
+  while(changed && guard++<8){
+    changed=false;
+    for(var i=0;i<LEAD_PREFIX.length;i++){
+      var p=LEAD_PREFIX[i];
+      if(s.indexOf(p)===0 && (s.length-p.length)>=4){
+        s=s.slice(p.length).trim(); changed=true; break;
+      }
+    }
+  }
+  return s||n;
+}
+
+function collectCompanyCandidates(facts, rawText){
+  var cands=[];
+  function add(n, role, evidence){
+    if(!n||typeof n!=='string')return;
+    n=n.trim();
+    if(n.length<3||n.length>60)return;
+    if(/^[0-9]+$/.test(n))return;
+    n=cleanCompanyName(n);                            // 修复#2：先剥离前导正文
+    if(!n||n.length<3)return;
+    if(looksLikeProse(n))return;                      // 修复#1：再拦截公文散文误抽
+    cands.push({name:n, role:role||'未知', evidence:evidence||''});
+  }
+  (facts.parties||[]).forEach(function(p){ add(p.name,p.role,p.evidence); });
+  if(facts.buyer&&facts.buyer.name) add(facts.buyer.name,'买方',facts.buyer.evidence);
+  if(facts.seller&&facts.seller.name) add(facts.seller.name,'卖方',facts.seller.evidence);
+  (facts.rawCompanyCandidates||[]).forEach(function(n){ add(n,'候选','(AI raw_company_candidates)'); });
+  // 本地文本二次扫描：AI 没抽到也不能结束（项15 error#3 禁止直接结束）
+  if(rawText){
+    // 角色标记（含可选括号注解 如 乙方（买方））+ 可选冒号；公司名允许内嵌全角括号（如（深圳））
+    var ROLE = '甲方|乙方|买方|卖方|供方|需方|采购方|销售方|客户|供应商|收款方|付款方|出卖方|买受方';
+    var NAMECHAR = '[一-龥A-Za-z0-9（）·•.\\-]';
+    /* 后缀按"最长优先"排列：避免"深圳宽东方新能源集团有限公司"被截断成"…集团" */
+    var SUFFIX = '(?:集团股份有限公司|集团有限责任公司|集团有限公司|股份有限公司|有限责任公司|有限合伙企业|合伙企业|有限合伙|有限公司|集团|公司|企业)';
+    /* 节制贪婪（V7.1 真件缺陷修复#3）：名称主体不得跨越下一个组织后缀，
+       否则"本合同由A有限公司向B有限公司"会被当成一家公司整段吞下。 */
+    var BODY = '(?:(?!公司|集团|企业)' + NAMECHAR + '){2,40}';
+    var re = new RegExp('(?:(' + ROLE + ')(?:[（(][^）)]*[）)])?[:：]?\\s*)?(' + BODY + SUFFIX + ')', 'g');
+    var m;
+    while((m=re.exec(rawText))){
+      var role=m[1]?m[1].replace(/[（(][^）)]*[）)]/g,'').replace(/[:：]/g,'').trim():'未知';
+      add(m[2], role||'未知', (m[1]||'')+m[2]);
+    }
+  }
+  // 去重（标准化名）
+  var seen={}, out=[];
+  cands.forEach(function(c){
+    var k=normalizeCompanyName(c.name);
+    if(seen[k]){
+      var ex=seen[k];
+      if((!ex.role||ex.role==='未知')&&c.role&&c.role!=='未知') ex.role=c.role;
+      if(!ex.evidence&&c.evidence) ex.evidence=c.evidence;
+      return;
+    }
+    seen[k]=c; out.push(c);
+  });
+  return out;
+}
+
+/* PDF 文字层质量评估（项6）：先读文字，再判断；不在此渲染图片 */
+function assessTextQuality(text){
+  if(!text||text.trim().length<30) return {ok:false,reason:'文字过少'};
+  var cn=(text.match(/[一-龥]/g)||[]).length;
+  var ratio=cn/Math.max(1,text.length);
+  var garbage=/�|□|█|▒/.test(text)
+    || /[A-Za-z]{25,}/.test(text.replace(/\s/g,''))
+    || /([一-龥])\s([一-龥])\s([一-龥])\s([一-龥])/.test(text); // 异常断句（逐字空格）
+  var ok = ratio>0.25 && !garbage;
+  return {ok:ok, ratio:ratio};
+}
+
+/* 事实关系判定（项21）：仅依据合同事实（买方/卖方/甲乙方的我方证据），不凭标题 */
+function determineRelationshipFromFacts(facts){
+  if(facts.seller&&facts.seller.name&&isMyCompany(facts.seller.name)) return 'seller';
+  if(facts.buyer&&facts.buyer.name&&isMyCompany(facts.buyer.name)) return 'buyer';
+  var rel='unknown', reason=[];
+  (facts.parties||[]).forEach(function(p){
+    if(isMyCompany(p.name)){
+      if(/卖|供/.test(p.role)){ rel='seller'; reason.push('party '+p.name+' 角色='+p.role); }
+      else if(/买|需/.test(p.role)){ rel='buyer'; reason.push('party '+p.name+' 角色='+p.role); }
+    }
+  });
+  return rel;
+}
+
+/* 双合同合并（纯逻辑，可被测试）：sides=[{tag,co,amt,rel,incomplete}]
+   返回 {upCo,upAmt,downCo,downAmt,method,warnings,needConfirm,partial} */
+function mergeTwoSides(sides){
+  var items=sides.filter(function(s){return s.co && s.amt && !isNaN(parseFloat(s.amt));});
+  var fUpCo='',fUpAmt='',fDownCo='',fDownAmt='',method='',warnings=[],needConfirm=false;
+  function applyByRel(arr){ arr.forEach(function(it){
+    if(it.rel==='seller'&&!fUpCo){fUpCo=it.co;fUpAmt=it.amt;}
+    if(it.rel==='buyer'&&!fDownCo){fDownCo=it.co;fDownAmt=it.amt;}
+  }); }
+  if(items.length>=2){
+    var a=items[0], b=items[1];
+    var aNum=parseFloat(a.amt), bNum=parseFloat(b.amt);
+    // 第一依据：事实关系（两份都明确）
+    if(a.rel!=='unknown'&&b.rel!=='unknown'){ method='fact-evidence'; applyByRel(items); }
+    // 兜底：比价法（项22，低=下游采购 / 高=上游销售）
+    if(!fUpCo||!fDownCo){
+      if(aNum===bNum){ method='equal-amount'; needConfirm=true; warnings.push('两份金额相等，无法可靠判定上下游，请人工确认'); applyByRel(items); }
+      else { method='price-compare';
+        var lo=aNum<bNum?a:b, hi=aNum<bNum?b:a;
+        fDownCo=lo.co; fDownAmt=lo.amt; fUpCo=hi.co; fUpAmt=hi.amt;
+        if(a.rel==='unknown'&&b.rel==='unknown') warnings.push('事实关系不足，已按金额比价（低=下游/高=上游）兜底');
+      }
+    }
+    // 亏损检测（项24/40）
+    if(fUpAmt&&fDownAmt){
+      var u=parseFloat(fUpAmt), d=parseFloat(fDownAmt);
+      if(!isNaN(u)&&!isNaN(d)&&u<d){ needConfirm=true; warnings.push('⚠️ 疑似亏损交易（上游金额<下游金额），请确认上下游'); }
+    }
+  } else {
+    // 任意一侧缺失对手方/金额 → 无法可靠合并
+    method='incomplete'; needConfirm=true; warnings.push('双合同尚有一侧缺少对手方或金额，请补全/确认后再合并');
+  }
+  return {upCo:fUpCo,upAmt:fUpAmt,downCo:fDownCo,downAmt:fDownAmt,method:method,warnings:warnings,needConfirm:needConfirm};
+}
+
+/* ========== V7 PURE LOGIC END ========== */
+
+/* ---------- 文件解析层（项5/6/7/8/9）---------- */
+async function parseFile(file){
+  var low=file.name.toLowerCase();
+  var api=$('#c_api').value.trim();
+  if(!api) return {mode:'none', error:'未配置 AI 后端地址（#c_api）'};
+  var body, localText='', parseNote='';
   if(low.endsWith('.pdf')){
-    const pdfjs=window.pdfjsLib;
-    if(!pdfjs) throw new Error('PDF 解析库未加载（需联网）');
-    const buf=await file.arrayBuffer();
-    const doc=await pdfjs.getDocument({data:buf}).promise;
-    let text=''; const pageImages=[];
-    for(let i=0;i<doc.numPages;i++){
-      const page=await doc.getPage(i+1);
-      const tc=await page.getTextContent();
-      text+=(tc.items||[]).map(it=>it.str||'').join(' ')+'\n';
-      const vp=page.getViewport({scale:1.6});
-      const canvas=document.createElement('canvas'); canvas.width=vp.width; canvas.height=vp.height;
-      const ctx=canvas.getContext('2d');
-      await page.render({canvasContext:ctx, viewport:vp}).promise;
-      pageImages.push(canvas.toDataURL('image/png').split(',')[1]);
+    var q=await pdfAssess(file);                 // 先读文字层
+    if(q.ok){ body={kind:'contract',mode:'text',text:q.text}; localText=q.text; parseNote='PDF文字层(合格)'; }
+    else { body={kind:'contract',mode:'vision',images:q.images}; parseNote='PDF扫描件→Vision('+ (q.images?q.images.length:0) +'页)'; }
+  } else if(low.match(/\.(png|jpe?g|bmp|webp)$/)){
+    var b64=await fileToB64(file);
+    body={kind:'contract',mode:'vision',images:[b64.split(',')[1]]};
+    parseNote='图片→Vision';
+  } else if(low.match(/\.(txt|csv|md)$/)){
+    var t=await file.text(); localText=t; body={kind:'contract',mode:'text',text:t}; parseNote='纯文本';
+  } else if(low.match(/\.(docx?|xlsx?)$/)){
+    // Word/Excel：交由 Edge 真解析（项7/8），前端不再当 raw 信任
+    var rb=await fileToB64(file);
+    body={kind:'contract',mode:'office',filename:file.name,data:rb.split(',')[1]};
+    parseNote='Office('+(low.endsWith('.docx')||low.endsWith('.doc')?'Word':'Excel')+')→Edge解析';
+  } else {
+    var fb=await fileToB64(file);
+    body={kind:'contract',mode:'office',filename:file.name,data:fb.split(',')[1]};
+    parseNote='未知格式→Edge解析';
+  }
+  return {mode:'edge', body:body, localText:localText, parseNote:parseNote, fileType:low};
+}
+
+/* PDF 评估：先取文字层质量；不合格才渲染【全部】页（项5：禁止前4页限制） */
+async function pdfAssess(file){
+  var pdfjs=window.pdfjsLib;
+  if(!pdfjs) return {ok:false, images:[]};
+  var buf;
+  try{ buf=await file.arrayBuffer(); }catch(e){ return {ok:false,images:[]}; }
+  // 第一步：只读文字层
+  try{
+    var doc=await pdfjs.getDocument({data:buf}).promise;
+    var text='';
+    for(var i=0;i<doc.numPages;i++){
+      var page=await doc.getPage(i+1);
+      var tc=await page.getTextContent();
+      text+=(tc.items||[]).map(function(it){return it.str||'';}).join(' ')+'\n';
     }
     await doc.destroy();
-    // 中文 PDF 在浏览器内文字层常错乱 → 优先视觉模型（Qwen-VL 直接读图，识别更准）
-    body = pageImages.length ? {kind:'contract',mode:'vision',images:pageImages.slice(0,4)} : {kind:'contract',mode:'text',text};
-  } else if(low.match(/\.(png|jpe?g|bmp|webp)$/)){
-    const b64=await fileToB64(file); body={kind:'contract',mode:'vision',images:[b64.split(',')[1]]};
-  } else if(low.match(/\.(txt|csv|md)$/)){
-    const text=await file.text(); body={kind:'contract',mode:'text',text};
-  } else {
-    const b64=await fileToB64(file); body={kind:'contract',mode:'raw',filename:file.name,data:b64.split(',')[1]};
-  }
-  const send=async(b)=>{
-    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b),signal:ctl.signal});
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    return await r.json();
-  };
-  try{
-    const j=await send(body);
-    // 视觉模型未配置时自动回退文本模式（pdf.js 抽到的文字）
-    if(j&&j.error&&/vision|VL|DASHSCOPE|视觉/i.test(j.error)&&body.mode==='vision'){
-      console.warn('[v5] vision 未配置，回退文本模式');
-      const buf2=await file.arrayBuffer();
-      const doc2=await pdfjs.getDocument({data:buf2}).promise;
-      let t2=''; for(let i=0;i<doc2.numPages;i++){const p=await doc2.getPage(i+1);const tc=await p.getTextContent();t2+=(tc.items||[]).map(it=>it.str||'').join(' ')+' ';}
-      await doc2.destroy();
-      return await send({kind:'contract',mode:'text',text:t2});
+    var q=assessTextQuality(text);
+    if(q.ok) return {ok:true, text:text, images:[]};
+    // 第二步：文字层不合格 → 渲染全部页（无 4 页上限）
+    var doc2=await pdfjs.getDocument({data:buf}).promise;
+    var images=[];
+    for(var j=0;j<doc2.numPages;j++){
+      var pg=await doc2.getPage(j+1);
+      var vp=pg.getViewport({scale:1.6});
+      var cv=document.createElement('canvas'); cv.width=vp.width; cv.height=vp.height;
+      await pg.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
+      images.push(cv.toDataURL('image/png').split(',')[1]);
     }
-    return j;
-  } finally { clearTimeout(tm); }
+    await doc2.destroy();
+    return {ok:false, text:'', images:images};
+  }catch(e){ return {ok:false, images:[]}; }
 }
-async function extractLocalJson(file, api){
-  const url=api.replace(/\/+$/,'')+'/extract?kind=contract';
-  const ctl=new AbortController(); const tm=setTimeout(()=>ctl.abort(),120000);
-  const res=await fetch(url,{method:'POST',body:file,signal:ctl.signal,headers:{'X-Filename':encodeURIComponent(file.name),'Content-Type':'application/octet-stream'}});
-  clearTimeout(tm);
-  if(!res.ok) throw new Error('HTTP '+res.status);
-  return await res.json();
+
+/* ---------- 统一 ContractFacts（项9/10）---------- */
+async function extractContractFacts(parseResult, api){
+  if(parseResult.mode==='none') return {status:'fail', reason:parseResult.error, rawAI:null, normalized:null, documentContent:{text:'',tables:[],images:[],pages:[]}};
+  var url=api.replace(/\/+$/,'');
+  var ctl=new AbortController(); var tm=setTimeout(function(){ctl.abort();},120000);
+  var data;
+  try{
+    var res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(parseResult.body),signal:ctl.signal});
+    clearTimeout(tm);
+    if(!res.ok) return {status:'fail', reason:'HTTP '+res.status, rawAI:null, normalized:null, documentContent:{text:'',tables:[],images:[],pages:[]}};
+    data=await res.json();
+  }catch(e){ clearTimeout(tm); return {status:'fail', reason:String((e&&e.message)||e), rawAI:null, normalized:null, documentContent:{text:'',tables:[],images:[],pages:[]}}; }
+  return normalizeFacts(data, parseResult.body, parseResult.localText);
 }
-/* ========== 双合同合并模块 v5.2（提取不过滤isMyCo·写入时才检查·诊断日志）========== */
-console.log('%c[TRADE-DASH] v6.0 dual-module loaded', 'color:#059669;font-weight:bold');
-setTimeout(function(){
-  var el=document.getElementById('dualMerge');
-  if(el){
-    var vb=document.createElement('div');
-    vb.style.cssText='display:inline-block;background:#059669;color:#fff;padding:2px 12px;border-radius:12px;font-size:13px;margin-left:8px;vertical-align:middle;font-weight:bold';
-    vb.textContent='v6.0 ✓';
-    var ph=el.previousElementSibling;
-    if(ph&&ph.querySelector('.dc-head'))ph.querySelector('.dc-head').appendChild(vb); else el.parentNode.insertBefore(vb,el);
+
+/* 规范化：新结构 → facts；v6 旧结构 → 明确提示升级，不静默兼容（项10） */
+function normalizeFacts(data, body, localText){
+  if(!data||data.error) return {status:'fail', reason:(data&&data.error)||'空结果', rawAI:data, normalized:null, documentContent:{text:localText||'',tables:[],images:[],pages:[]}};
+  // 后端仍为 v6 旧结构（含 上游公司/下游公司/我方角色 但无 parties/buyer/seller）
+  var isV6 = (data['上游公司']!==undefined||data['下游公司']!==undefined||data['我方角色']!==undefined||data['对手方']!==undefined)
+             && !(data.parties||data.buyer||data.seller||data.contract_amount!==undefined);
+  if(isV6){
+    return {status:'backend-outdated',
+      reason:'⚠️ AI 后端仍为 v6 结构（含 上游公司/下游公司/我方角色），请升级后端到 v7 事实型结构；已停止使用其上下游字段',
+      rawAI:data, normalized:null, documentContent:{text:localText||'',tables:[],images:[],pages:[]}};
   }
-},800);
+  // 新结构
+  var facts={
+    parties:(data.parties||[]).map(function(pp){return {name:pp.name||'',role:pp.role||'未知',evidence:pp.evidence||''};}),
+    buyer:{name:(data.buyer&&data.buyer.name)||'',evidence:(data.buyer&&data.buyer.evidence)||''},
+    seller:{name:(data.seller&&data.seller.name)||'',evidence:(data.seller&&data.seller.evidence)||''},
+    contractAmount:String(data.contract_amount||'').replace(/[^\d.]/g,''),
+    amountType:data.amount_type||'未知',
+    amountEvidence:data.amount_evidence||'',
+    contractDate:data.contract_date||'',
+    paymentTerms:data.payment_terms||'',
+    invoiceTerms:data.invoice_terms||'',
+    contractNumber:data.contract_number||'',
+    productInfo:data.product_info||'',
+    rawCompanyCandidates:(data.raw_company_candidates||[]),
+    warnings:(data.warnings||[])
+  };
+  // 统一 documentContent：优先后端回传的 recognized_text（Vision/Word/Excel 由 Edge 抽出），其次本地文字层
+  var docText = (data.documentContent&&data.documentContent.text) || data.recognized_text || localText || body.text || '';
+  var documentContent = {
+    text: docText,
+    tables: (data.documentContent&&data.documentContent.tables)||[],
+    images: (data.documentContent&&data.documentContent.images)||[],
+    pages: (data.documentContent&&data.documentContent.pages)||[]
+  };
+  return {status:'ok', rawAI:data, normalized:facts, documentContent:documentContent};
+}
 
-var dualResults={up:null,down:null};
+/* ---------- 四层校验（项32）---------- */
+function validateContractFacts(facts, cands){
+  var lv={L1:{},L2:{},L3:{},L4:{}};
+  lv.L1.ok=true; lv.L1.note='解析完成';
+  var my=identifyMyCompany(cands), others=cands.filter(function(c){return !isMyCompany(c.name);});
+  lv.L2.myFound=my.length>0; lv.L2.otherFound=others.length>0; lv.L2.otherCount=others.length;
+  lv.L3.amount=facts.contractAmount; lv.L3.amountNum= facts.contractAmount? !isNaN(parseFloat(facts.contractAmount)) : false;
+  lv.L4.upEmpty=false; lv.L4.downEmpty=false; lv.L4.myInUpDown=false;
+  var status='识别成功';
+  if(!lv.L2.myFound) status='识别失败（未识别宽东方）';
+  else if(!lv.L2.otherFound) status='识别失败（未识别对手方）';
+  else if(lv.L2.otherCount>1) status='需确认（多个候选对手方）';
+  return {levels:lv, status:status};
+}
+function identifyMyCompany(cands){ return cands.filter(function(c){return isMyCompany(c.name);}); }
 
-/* 拖拽绑定（不变） */
+/* ---------- 单合同分析（项2/21/25）---------- */
+function analyzeSingleContract(facts, documentContent){
+  var rawText=documentContent&&documentContent.text||'';
+  var cands=collectCompanyCandidates(facts, rawText);
+  var my=identifyMyCompany(cands);
+  var cp=identifyCounterparty(cands);
+  var relationship=determineRelationshipFromFacts(facts);
+  var v=validateContractFacts(facts, cands);
+  var needConfirm = (cp.status==='need-confirm'||cp.status==='no-counterparty')
+    || relationship==='unknown' || /失败|确认/.test(v.status);
+  if(cp.status==='suggest') needConfirm=true;
+  return {
+    status:v.status,
+    myCompany:my.length?my[0].name:null,
+    counterparty:cp.counterparty?cp.counterparty.name:null,
+    counterpartyCandidates: cp.candidates? cp.candidates.map(function(c){return c.name;}) : null,
+    counterpartyStatus:cp.status,
+    relationship:relationship,
+    amount:facts.contractAmount, amountEvidence:facts.amountEvidence,
+    candidates:cands, validation:v, needConfirm:needConfirm,
+    method: relationship!=='unknown' ? 'fact-evidence' : (cp.status==='need-confirm'?'manual-confirm':(cp.status==='suggest'?'suggest':'fallback')),
+    documentContent:documentContent
+  };
+}
+
+/* ---------- 业务规则引擎：双合同合并 ---------- */
+var dualFacts={up:null, down:null};
+var _mergeStateV7=null;
+
+async function v7ExtractDual(side, file){
+  var api=$('#c_api').value.trim();
+  var st=$('#dual'+(side==='up'?'Up':'Down')+'Status');
+  st.textContent='AI 抽取中…'; st.style.color='var(--brand)';
+  var parseR=await parseFile(file);
+  var factsRes=await extractContractFacts(parseR, api);
+  if(factsRes.status==='fail'||factsRes.status==='backend-outdated'){
+    st.textContent='⚠️ '+(factsRes.status==='backend-outdated'?'后端未升级':'识别失败')+'：'+factsRes.reason;
+    st.style.color='var(--danger)';
+    dualFacts[side]=null; return;
+  }
+  if(factsRes.status==='fail'){
+    st.textContent='⚠️ 识别失败：'+factsRes.reason; st.style.color='var(--danger)';
+    dualFacts[side]=null; return;
+  }
+  var analysis=analyzeSingleContract(factsRes.normalized, factsRes.documentContent);
+  dualFacts[side]={facts:factsRes, analysis:analysis, file:file.name, parseNote:parseR.parseNote, fileType:parseR.fileType};
+  st.textContent='✓ '+(analysis.counterparty||'对手方未定')+(analysis.amount?' · ¥'+analysis.amount:'')+' · 待合并';
+  st.style.color='var(--ok)';
+  doMergeV7();
+}
+
+/* 双合同拖拽绑定（重写，去掉旧 handleDualFile） */
 function bindDualDrop(dropId,inputId,side){
   var d=$('#'+dropId),i=$('#'+inputId);
   if(!d||!i)return;
   d.onclick=function(){i.click();};
-  i.onchange=function(e){var f=e.target.files[0];if(f)handleDualFile(side,f);e.target.value='';};
+  i.onchange=function(e){var f=e.target.files[0];if(f)v7ExtractDual(side,f);e.target.value='';};
   ['dragenter','dragover'].forEach(function(ev){d.addEventListener(ev,function(e){e.preventDefault();d.style.borderColor='var(--brand)';d.style.background='#f0f6ff';});});
   ['dragleave','drop'].forEach(function(ev){d.addEventListener(ev,function(e){e.preventDefault();d.style.borderColor='';d.style.background='';});});
-  d.addEventListener('drop',function(e){var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];if(f)handleDualFile(side,f);});
+  d.addEventListener('drop',function(e){var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];if(f)v7ExtractDual(side,f);});
 }
 
-/* ====== 核心文件处理：内联全部逻辑 ====== */
-async function handleDualFile(side,file){
-  var api=$('#c_api').value.trim();
-  var st=$('#dual'+(side==='up'?'Up':'Down')+'Status');
-  var MB=(file.size/1048576).toFixed(1);
-  st.textContent='AI 抽取中…（'+MB+'MB）';st.style.color='var(--brand)';
-  try{
-    var data=await extractContractJson(file,api);
-    if(!data||data.error){st.textContent='抽取失败：'+(data&&data.error||'未知');st.style.color='var(--danger)';return;}
+function doMergeV7(){
+  var A=dualFacts.up, B=dualFacts.down;
+  if(!A&&!B) return;
+  var sides=[];
+  [['A',A],['B',B]].forEach(function(p){
+    var tag=p[0], it=p[1];
+    if(!it) return;
+    var a=it.analysis;
+    sides.push({tag:tag, co:a.counterparty, amt:a.amount, rel:a.relationship,
+      candidates:a.counterpartyCandidates||null, incomplete:!a.counterparty});
+  });
+  var m=mergeTwoSides(sides);
 
-    /* 【日志1】原始数据完整输出 */
-    console.log('[v5] side='+side+' RAW:',JSON.stringify(data,null,2));
-    var keys=Object.keys(data);
-    console.log('[v5] side='+side+' keys:',keys.join(', '));
+  // 仅在已有确定值时写字段；need-confirm 且不确定的不写（项2/3）
+  writeFieldV7('c_上游公司',m.upCo);
+  writeFieldV7('c_上游应收金额',m.upAmt);
+  writeFieldV7('c_下游公司',m.downCo);
+  writeFieldV7('c_下游应付金额',m.downAmt);
 
-    /* 存储原始数据 */
-    dualResults[side]=data;
-
-    /* ====== v6：锚定我方六家，取“另一家”为对手方（不再信任AI的“我方角色”）====== */
-    // 1) 收集所有公司名候选
-    var nameFields=['对手方','上游公司','下游公司'];
-    var candidates=[];
-    nameFields.forEach(function(k){ var v=data[k]; if(v&&typeof v==='string'&&v.trim()) candidates.push(v.trim()); });
-    // 全字段扫描兜底（抓取任何像公司名的字段）
-    keys.forEach(function(k){
-      var v=data[k];
-      if(typeof v==='string'&&v.length>3&&v.length<60&&/公司|集团|企业|有限|科技|新能源|实业/.test(v)&&!/账期|开票|条款|月份|板块|角色|金额|应收|应付/.test(k)){
-        if(candidates.indexOf(v.trim())<0) candidates.push(v.trim());
-      }
-    });
-    candidates=candidates.filter(function(c,i){return candidates.indexOf(c)===i;}); // 去重
-    console.log('[v6] side='+side+' nameCandidates=',JSON.stringify(candidates));
-
-    // 2) 剔除我方六家 → 对手方（这就是“合同的另一家公司”）
-    var others=candidates.filter(function(c){return !isMyCo(c);});
-    var oc=others.length?others[0]:'';
-    console.log('[v6] side='+side+' → counterparty(非我方)=',JSON.stringify(oc),' | 我方候选=',JSON.stringify(candidates.filter(isMyCo)));
-
-    // 3) 抽取失败：AI 只认出我方或啥都没认出（典型：浏览器文字层错乱，把宽东方自己当对手方）
-    if(!oc){
-      console.error('[v6] ⚠️ EXTRACT-FAIL: 未找到非我方对手方');
-      st.textContent='⚠️ 本合同未识别到对手方（可能文字层错乱），请手动填写或重传';
-      st.style.color='var(--danger)';
-      dualResults[side]=Object.assign({},data,{_extractFailed:true});
-      return;
-    }
-
-    // 4) 金额（价格）：上游应收 或 下游应付，清洗成纯数字串
-    var amt='';
-    var av=data['上游应收金额']; if(av&&String(av).trim())amt=String(av).trim();
-    if(!amt){var dv=data['下游应付金额']; if(dv&&String(dv).trim())amt=String(dv).trim();}
-    amt=amt.replace(/[^\d.]/g,'');
-    var rawRole=data['我方角色']||'';
-    console.log('[v6] side='+side+' → oc='+JSON.stringify(oc)+' amount='+amt+' rawRole='+JSON.stringify(rawRole));
-
-    // 5) 存储（v6 结构）：对手方 + 价格 + AI原始角色（仅作兜底/参考）
-    dualResults[side]={counterparty:oc, amount:amt, rawRole:rawRole, raw:data};
-    st.textContent='✓ '+oc+(amt?' · ¥'+amt:'')+' · 待合并定上下游';
-    st.style.color='var(--ok)';
-
-    /* 执行合并（比价法：见 doMergeV6） */
-    try{doMergeV6();}catch(me){st.textContent='合并错('+me.name+')';st.style.color='#e5a000';console.error('[v6-merge-err]',me.stack);}
-
-
-  }catch(e){st.textContent='错误:'+e.name;st.style.color='var(--danger)';console.error('[v5-extract-err]',e.stack);}
-}
-
-/* ====== 宽东方系检测 v5.2（加诊断日志 + 收紧正则）===== */
-function isMyCo(n){
-  if(!n||typeof n!=='string'){console.log('[isMyCo] SKIP (empty/non-string):',JSON.stringify(n));return false;}
-  var t=n.trim();
-  /* 逐项诊断 */
-  var hasKDF=/宽东方/i.test(t);
-  var hasKEn=/Kuandongfang/i.test(t);
-  var hasAbbr=/KDF/i.test(t);
-  var result=hasKDF||hasKEn||hasAbbr;
-  /* 详细日志（方便排查误判） */
-  if(result)console.warn('[isMyCo] ⚠️ MATCH! value='+JSON.stringify(t)+' | 宽东方='+hasKDF+' Kuandongfang='+hasKEn+' KDF='+hasAbbr+' | length='+t.length+' | chars='+Array.from(t).map(function(c){return c.charCodeAt(0);}).join(','));
-  else console.log('[isMyCo] ✗ no-match: '+JSON.stringify(t));
-  return result;
-}
-
-/* ====== 合并逻辑 v5（全内联）===== */
-/* ====== 合并逻辑 v6（比价法：金额低=下游采购，高=上游销售）===== */
-var _mergeState=null;
-function doMergeV6(){
-  var up=dualResults.up, down=dualResults.down;
-  if(!up&&!down)return;
-  var items=[];
-  if(up&&up.counterparty)items.push({side:'up',co:up.counterparty,amt:up.amount,rawRole:up.rawRole});
-  if(down&&down.counterparty)items.push({side:'down',co:down.counterparty,amt:down.amount,rawRole:down.rawRole});
-
-  var fUpCo='',fUpAmt='',fDownCo='',fDownAmt='', method='';
-
-  if(items.length===2){
-    var aRaw=items[0].amt, bRaw=items[1].amt;
-    var aNum=(aRaw&&!isNaN(parseFloat(aRaw)))?parseFloat(aRaw):'';
-    var bNum=(bRaw&&!isNaN(parseFloat(bRaw)))?parseFloat(bRaw):'';
-    if(aNum!==''&&bNum!==''&&aNum===bNum){           // 金额相等 → 用AI角色兜底
-      method='equal-amount';
-      items.forEach(function(it){ assignByRole(it); });
-    } else if(aNum===''||bNum===''){                 // 缺金额 → 用AI角色兜底
-      method='no-amount';
-      items.forEach(function(it){ assignByRole(it); });
-    } else {                                         // 标准比价法
-      method='price-compare';
-      var lo=aNum<bNum?items[0]:items[1], hi=aNum<bNum?items[1]:items[0];
-      fDownCo=lo.co; fDownAmt=lo.amt;                // 低=下游(我找谁买,付钱)
-      fUpCo=hi.co;   fUpAmt=hi.amt;                  // 高=上游(我卖给谁,收钱)
-    }
-  } else if(items.length===1){
-    method='single';
-    assignByRole(items[0]);
-  }
-  function assignByRole(it){
-    if(/卖/.test(it.rawRole)){ if(!fUpCo){fUpCo=it.co;fUpAmt=it.amt;} }
-    else if(/买/.test(it.rawRole)){ if(!fDownCo){fDownCo=it.co;fDownAmt=it.amt;} }
-    else { if(!fDownCo){fDownCo=it.co;fDownAmt=it.amt;} else if(!fUpCo){fUpCo=it.co;fUpAmt=it.amt;} }
-  }
-
-  console.log('%c[v6-merge] method='+method+' ↑='+fUpCo+'('+fUpAmt+') ↓='+fDownCo+'('+fDownAmt+')',(fUpCo&&fDownCo)?'color:#059669':'color:#dc2626');
-
-  writeFieldV6('c_上游公司', fUpCo, '上游公司');
-  writeFieldV6('c_上游应收金额', fUpAmt, '上游应收金额');
-  writeFieldV6('c_下游公司', fDownCo, '下游公司');
-  writeFieldV6('c_下游应付金额', fDownAmt, '下游应付金额');
-
-  var meta=(up&&up.raw)||(down&&down.raw)||{};
+  // 其它字段（账期/开票/月份/板块）尝试从原始带出
+  var meta=(A&&A.facts.rawAI)||(B&&B.facts.rawAI)||{};
   if(meta['账期'])$('#c_账期').value=meta['账期'];
   if(meta['开票条款'])$('#c_开票条款').value=meta['开票条款'];
   if(meta['月份'])$('#c_月份').value=meta['月份'];
   if(meta['板块'])$('#c_板块').value=meta['板块'];
 
+  _mergeStateV7=m;
+  renderMergeV7(m, sides, A, B);
   contractReview();
-
-  _mergeState={upCo:fUpCo,upAmt:fUpAmt,downCo:fDownCo,downAmt:fDownAmt,method:method};
-  renderMergeV6(_mergeState, method!=='price-compare'&&method!=='single');
 }
 
-function writeFieldV6(id, val, label){
+function writeFieldV7(id, val){
   var el=$('#'+id);
-  if(!el){console.error('[v6-write] BUG: #'+id+' not found');return;}
-  if(!val){console.log('[v6-write] SKIP '+label+' (empty)');return;}
-  if(isMyCo(val)){console.warn('[v6-write] ⛔ BLOCK '+label+' (isMyCo): '+val);return;}
+  if(!el){console.error('[v7-write] #'+id+' not found');return;}
+  if(!val){console.log('[v7-write] SKIP (empty) '+id);return;}
+  if(isMyCompany(val)){console.warn('[v7-write] ⛔ BLOCK 宽东方系禁止进入 '+id+': '+val);return;}
   el.value=val;
   try{el.dispatchEvent(new Event('input',{bubbles:true}));}catch(e){}
-  console.log('[v6-write] ✓ '+label+'='+val);
+  console.log('[v7-write] ✓ '+id+'='+val);
 }
 
-function renderMergeV6(s, needConfirm){
+/* ---------- 渲染：合并结果 + 调试面板 + 状态 + 三级留痕 ---------- */
+function renderMergeV7(b, sides, A, B){
   var el=$('#dualMerge'); if(!el)return;
   el.style.display='block';
-  var ua=num(s.upAmt), da=num(s.downAmt);
+  var ua=num(b.upAmt), da=num(b.downAmt);
   var profit=(ua&&da)?ua-da:null;
   var h='';
-  h+='<div class="dc-merge-row"><span class="dc-m-l">上游销售（我卖给了谁）</span><span class="dc-m-v">'+esc(s.upCo||'—')+'</span><span class="dc-m-a">'+(s.upAmt?fmt(num(s.upAmt)):'—')+'</span></div>';
-  h+='<div class="dc-merge-row"><span class="dc-m-l">下游采购（我找谁买的）</span><span class="dc-m-v">'+esc(s.downCo||'—')+'</span><span class="dc-m-a">'+(s.downAmt?fmt(num(s.downAmt)):'—')+'</span></div>';
+  h+='<div class="dc-merge-row"><span class="dc-m-l">上游销售（我卖给了谁）</span><span class="dc-m-v">'+esc(b.upCo||'—')+'</span><span class="dc-m-a">'+(b.upAmt?fmt(num(b.upAmt)):'—')+'</span></div>';
+  h+='<div class="dc-merge-row"><span class="dc-m-l">下游采购（我找谁买的）</span><span class="dc-m-v">'+esc(b.downCo||'—')+'</span><span class="dc-m-a">'+(b.downAmt?fmt(num(b.downAmt)):'—')+'</span></div>';
   h+='<div class="dc-merge-row dc-m-total"><span class="dc-m-l">预估毛利</span><span class="dc-m-v"></span><span class="dc-m-a">'+(profit!==null?fmt(profit):'待两份齐全')+'</span></div>';
-  if(needConfirm){
-    h+='<div class="dc-merge-note" style="color:#e5a000">⚠️ 金额相等或缺失，上下游按AI角色兜底，请核对后可在表单手动改。</div>';
-  } else {
-    h+='<div class="dc-merge-note" style="color:var(--ok)">✅ 比价法自动填入：金额低=下游采购，高=上游销售。</div>';
+  h+='<div class="dc-merge-note '+(b.needConfirm?'dc-warn':'dc-ok')+'">'+(b.needConfirm?'⚠️ '+(b.warnings.join('；')||'需人工确认'):'✅ 已按业务规则判定（方法：'+b.method+'）')+'</div>';
+  // need-confirm 侧：提供对手方选择（项3：禁止自动写入）
+  sides.forEach(function(s){
+    if(s.incomplete && s.candidates && s.candidates.length){
+      h+='<div class="dc-sel"><div class="dc-warn">合同'+s.tag+' 对手方待确认，请选择：</div>';
+      s.candidates.forEach(function(cn){
+        h+='<button class="btn small" data-side="'+s.tag+'" data-co="'+esc(cn)+'">选为合同'+s.tag+'对手方：'+esc(cn)+'</button>';
+      });
+      h+='</div>';
+    }
+  });
+  if(b.needConfirm && !sides.some(function(s){return s.incomplete;})){
+    h+='<div class="dc-merge-actions"><button id="dcFlip" class="btn small">⇅ 上下游对调（如实际为亏损/异常交易）</button></div>';
   }
-  h+='<div class="dc-merge-actions" style="margin-top:8px"><button id="dcFlip" class="btn small" style="font-size:12px">⇅ 上下游对调（如实际为亏损交易）</button></div>';
+  // 调试面板
+  h+='<details class="dc-debug"><summary>🔍 合同识别调试面板</summary><div class="dc-debug-body">';
+  h+=debugPanelHtml(A,'A')+debugPanelHtml(B,'B');
+  h+='<div class="dc-dbg-row"><b>业务判断方式(method)</b>：'+esc(b.method||'—')+'</div>';
+  h+='<div class="dc-dbg-row"><b>最终上下游</b>：上游='+esc(b.upCo||'—')+' / 下游='+esc(b.downCo||'—')+'</div>';
+  h+='</div></details>';
   el.innerHTML=h;
+  // 绑定对手方选择
+  Array.prototype.forEach.call(el.querySelectorAll('button[data-side]'), function(btn){
+    btn.onclick=function(){
+      var tag=btn.getAttribute('data-side'), co=btn.getAttribute('data-co');
+      if(dualFacts[tag]){
+        dualFacts[tag].analysis.counterparty=co;
+        var idx=dualFacts[tag].analysis.counterpartyCandidates.indexOf(co);
+        if(idx>=0) dualFacts[tag].analysis.counterpartyCandidates.splice(idx,1);
+        dualFacts[tag].analysis.needConfirm=false;
+      }
+      doMergeV7();
+    };
+  });
   var flip=$('#dcFlip');
   if(flip)flip.onclick=function(){
-    var t=_mergeState;
-    _mergeState={upCo:t.downCo,upAmt:t.downAmt,downCo:t.upCo,downAmt:t.upAmt,method:(t.method||'')+'-flipped'};
-    writeFieldV6('c_上游公司',_mergeState.upCo,'上游公司');
-    writeFieldV6('c_上游应收金额',_mergeState.upAmt,'上游应收金额');
-    writeFieldV6('c_下游公司',_mergeState.downCo,'下游公司');
-    writeFieldV6('c_下游应付金额',_mergeState.downAmt,'下游应付金额');
+    var t=_mergeStateV7;
+    _mergeStateV7={upCo:t.downCo,upAmt:t.downAmt,downCo:t.upCo,downAmt:t.upAmt,method:(t.method||'')+'-flipped',warnings:t.warnings,needConfirm:true};
+    writeFieldV7('c_上游公司',_mergeStateV7.upCo);
+    writeFieldV7('c_上游应收金额',_mergeStateV7.upAmt);
+    writeFieldV7('c_下游公司',_mergeStateV7.downCo);
+    writeFieldV7('c_下游应付金额',_mergeStateV7.downAmt);
     contractReview();
-    renderMergeV6(_mergeState,true);
+    renderMergeV7(_mergeStateV7, sides, A, B);
     if(typeof toast==='function')toast('已对调上下游，请核对');
   };
 }
-window.onerror=function(msg,src,line,col,err){console.error('[GLOBAL-ERR]',msg,'\n@',src,':',line,':',col);return false;};
-/* ========== 双合同模块 v6 结束 ========== */
+function debugPanelHtml(item, tag){
+  if(!item) return '<div class="dc-dbg-row"><b>合同'+tag+'</b>：未上传</div>';
+  var f=item.facts, a=item.analysis, dc=item.facts.documentContent||{text:'',tables:[],images:[]};
+  var s='<div class="dc-dbg-block"><div class="dc-dbg-row"><b>合同'+tag+'</b>：'+esc(item.file||'')+'</div>';
+  s+='<div class="dc-dbg-row">文件类型：'+esc(item.fileType||'—')+' ｜ 解析方式：'+esc(item.parseNote||'—')+'</div>';
+  s+='<div class="dc-dbg-row">原始文字长度：'+(dc.text?dc.text.length:0)+' ｜ 表格数：'+(dc.tables?dc.tables.length:0)+' ｜ 图片数：'+(dc.images?dc.images.length:0)+'</div>';
+  s+='<div class="dc-dbg-row">识别状态：'+esc(a.status)+'（对手方状态：'+esc(a.counterpartyStatus||'—')+'）</div>';
+  s+='<div class="dc-dbg-row">宽东方匹配：'+esc(a.myCompany||'未识别')+'</div>';
+  s+='<div class="dc-dbg-row">非我方主体：'+(a.counterparty?esc(a.counterparty):'无')+'</div>';
+  s+='<div class="dc-dbg-row">合同关系（事实）：'+(a.relationship||'unknown')+'</div>';
+  s+='<div class="dc-dbg-row">金额：'+(a.amount||'—')+(a.amountEvidence?(' 证据：'+esc(a.amountEvidence)):'')+'</div>';
+  s+='<div class="dc-dbg-row">候选公司池：'+(a.candidates&&a.candidates.length?a.candidates.map(function(c){return esc(c.name)+'['+esc(c.role)+']';}).join('、'):'无')+'</div>';
+  s+='<div class="dc-dbg-row">ContractFacts：<pre class="dc-pre">'+esc(JSON.stringify(f.normalized,null,2))+'</pre></div>';
+  s+='<div class="dc-dbg-row">AI 原始返回：<pre class="dc-pre">'+esc(JSON.stringify(f.rawAI,null,2))+'</pre></div>';
+  s+='</div>';
+  return s;
+}
+
+/* ---------- 单合同管线（项2/25：统一，未知不默认填下游）---------- */
+async function v7ExtractSingle(file){
+  var st=$('#aiStatus');
+  var say=function(t,c){ if(st){st.textContent=t;st.style.color=c;} };
+  var api=$('#c_api').value.trim();
+  if(!api){ say('未填 AI 后端地址，请手动录入','var(--warn)'); return; }
+  say('AI 抽取中…（'+file.name+'）','var(--brand)');
+  var parseR=await parseFile(file);
+  var factsRes=await extractContractFacts(parseR, api);
+  if(factsRes.status==='fail'){ say('识别失败：'+factsRes.reason,'var(--danger)'); toast('AI 抽取失败'); return; }
+  if(factsRes.status==='backend-outdated'){ say('⚠️ 后端未升级：'+factsRes.reason,'var(--danger)'); toast('请升级 AI 后端到 v7'); return; }
+  var a=analyzeSingleContract(factsRes.normalized, factsRes.documentContent);
+  // 由业务规则引擎写字段（不照搬 AI 的 上游/下游）
+  if(a.relationship==='seller' && a.counterparty){ writeFieldV7('c_上游公司',a.counterparty); writeFieldV7('c_上游应收金额',a.amount); }
+  else if(a.relationship==='buyer' && a.counterparty){ writeFieldV7('c_下游公司',a.counterparty); writeFieldV7('c_下游应付金额',a.amount); }
+  else {
+    // 关系 unknown：绝不默认填下游（项2）。提供人工确认按钮
+    renderSingleConfirm(a, factsRes);
+    say('⚠️ 无法确定该合同属于上游销售还是下游采购，请人工确认','var(--warn)');
+    toast('关系待确认');
+    contractReview();
+    return;
+  }
+  var meta=factsRes.rawAI||{};
+  if(meta['账期'])$('#c_账期').value=meta['账期'];
+  if(meta['开票条款'])$('#c_开票条款').value=meta['开票条款'];
+  if(meta['月份'])$('#c_月份').value=meta['月份'];
+  if(meta['板块'])$('#c_板块').value=meta['板块'];
+  contractReview();
+  say('✓ 已识别：'+(a.relationship==='seller'?'上游销售':'下游采购')+' · '+a.counterparty+' · ¥'+a.amount,'var(--ok)');
+  toast('AI 已抽取合同事实');
+}
+
+/* 单合同人工确认 UI（项2：提供【设为上游销售】【设为下游采购】） */
+function renderSingleConfirm(a, factsRes){
+  var host=document.getElementById('singleConfirm');
+  if(!host){ host=document.createElement('div'); host.id='singleConfirm'; var ai=document.getElementById('aiExtract'); if(ai) ai.appendChild(host); }
+  host.innerHTML='';
+  host.style.marginTop='8px';
+  var h='<div class="dc-warn">⚠️ 无法确定该合同属于上游销售还是下游采购，请人工确认</div>';
+  if(a.counterparty){
+    h+='<div class="dc-merge-actions"><button class="btn small" id="scUp">设为上游销售（'+esc(a.counterparty)+'）</button>'
+      +'<button class="btn small" id="scDown">设为下游采购（'+esc(a.counterparty)+'）</button></div>';
+  } else if(a.counterpartyCandidates&&a.counterpartyCandidates.length){
+    h+='<div class="dc-warn">请先选择对手方：</div>';
+    a.counterpartyCandidates.forEach(function(cn){
+      h+='<button class="btn small" data-co="'+esc(cn)+'">选为对手方：'+esc(cn)+'</button> ';
+    });
+  } else {
+    h+='<div class="dc-warn">未识别到对手方，请手动填写下游/上游公司字段</div>';
+  }
+  host.innerHTML=h;
+  var up=document.getElementById('scUp'), down=document.getElementById('scDown');
+  if(up)up.onclick=function(){ writeFieldV7('c_上游公司',a.counterparty); writeFieldV7('c_上游应收金额',a.amount); host.innerHTML=''; contractReview(); toast('已设为上游销售'); };
+  if(down)down.onclick=function(){ writeFieldV7('c_下游公司',a.counterparty); writeFieldV7('c_下游应付金额',a.amount); host.innerHTML=''; contractReview(); toast('已设为下游采购'); };
+  Array.prototype.forEach.call(host.querySelectorAll('button[data-co]'), function(btn){
+    btn.onclick=function(){
+      var co=btn.getAttribute('data-co');
+      a.counterparty=co;
+      var idx=a.counterpartyCandidates.indexOf(co); if(idx>=0)a.counterpartyCandidates.splice(idx,1);
+      // 重新渲染为上下游选择
+      renderSingleConfirm(a, factsRes);
+    };
+  });
+}
+
+/* 重定义单合同入口（覆盖旧 aiExtractContract 的直接写表单行为） */
+function aiExtractContract(f){ v7ExtractSingle(f); }
+
+/* v7 版本徽标 */
+setTimeout(function(){
+  var el=document.getElementById('dualMerge');
+  if(el){
+    var vb=document.createElement('div');
+    vb.style.cssText='display:inline-block;background:#7c3aed;color:#fff;padding:2px 12px;border-radius:12px;font-size:13px;margin-left:8px;vertical-align:middle;font-weight:bold';
+    vb.textContent='v7.0 ✓';
+    var ph=el.previousElementSibling;
+    if(ph&&ph.querySelector('.dc-head'))ph.querySelector('.dc-head').appendChild(vb); else el.parentNode.insertBefore(vb,el);
+  }
+},800);
+
+/* ========== 双合同模块 v7 结束 ========== */
+
+
 
 /* ---------- 附件（合同/发票保存与查看） ---------- */
 const ATT_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px"><path d="M21.44 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l9.19-9.19a3 3 0 0 1 4.24 4.24l-9.2 9.19a1 1 0 0 1-1.41-1.41l8.49-8.49"/></svg>';
