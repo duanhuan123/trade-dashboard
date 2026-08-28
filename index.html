@@ -1329,9 +1329,9 @@ function contractReview(){
   checks.push({ok: !!term, warn:false, t:'开票条款已明确', d: term||'建议填写，影响税务与回款'});
   const ym=$('#c_月份').value;
   checks.push({ok:!!ym, warn:false, t:'合同月份已填', d: ym||'用于入账与账龄'});
-  const allOk=checks.every(c=>c.ok && !c.warn);
+  const allOk=checks.every(c=>c.ok); // V7.1 fix: warn（如亏损）仅提示不拦截，只有 err 才阻止入库
   $('#chkList').innerHTML=checks.map(c=>`<div class="chk ${c.ok?(c.warn?'warn':'pass'):'fail'}"><div class="ic">${c.ok?(c.warn?CHK_ICON.warn:CHK_ICON.pass):CHK_ICON.fail}</div><div class="tx"><b>${c.t}</b><div style="color:var(--sub);font-size:12px">${esc(c.d)}</div></div></div>`).join('');
-  $('#cRecord').disabled=!allOk; $('#cRecord').style.opacity=allOk?'1':'.5';
+  $('#cRecord').disabled=!allOk; $('#cRecord').textContent=allOk?'审核通过，入台账':'申请准入：'+(checks.find(c=>!c.ok)?'必填项缺失':'入库被拒'); $('#cRecord').style.opacity=allOk?'1':'.5';
   return {up,down,upAmt,downAmt,profit,ym,allOk};
 }
 function autoContractNo(ym){ ym=(ym||'').replace(/[^0-9]/g,'').slice(0,6); if(!ym) return ''; let max=0; records.forEach(r=>{ const m=/^HT(\d{6})(\d{3})$/.exec((r.合同编号||'').trim()); if(m&&m[1]===ym) max=Math.max(max,+m[2]); }); return 'HT'+ym+('00'+(max+1)).slice(-3); }
@@ -2247,11 +2247,17 @@ function doMergeV7(){
   writeFieldV7('c_下游公司',m.downCo);
   writeFieldV7('c_下游应付金额',m.downAmt);
 
-  // 其它字段（账期/开票/月份/板块）尝试从原始带出
-  var meta=(A&&A.facts.rawAI)||(B&&B.facts.rawAI)||{};
-  if(meta['账期'])$('#c_账期').value=meta['账期'];
-  if(meta['开票条款'])$('#c_开票条款').value=meta['开票条款'];
-  if(meta['月份'])$('#c_月份').value=meta['月份'];
+  // 其它字段：优先从 normalized facts（英文键）回填，兼容旧 meta 中文键
+  var srcA=(A&&A.facts)||(B&&B.facts)||{};
+  var nf=srcA.normalized||{};
+  var meta=srcA.rawAI||{};
+  if(nf.contractNumber) $('#c_合同编号').value=nf.contractNumber;
+  if(nf.contractDate){ var cd=String(nf.contractDate||''); if(cd.length>=7) $('#c_月份').value=cd.slice(0,7); }
+  else if(meta['月份'])$('#c_月份').value=meta['月份'];
+  if(nf.paymentTerms) $('#c_账期').value=nf.paymentTerms;
+  else if(meta['账期'])$('#c_账期').value=meta['账期'];
+  if(nf.invoiceTerms) $('#c_开票条款').value=nf.invoiceTerms;
+  else if(meta['开票条款'])$('#c_开票条款').value=meta['开票条款'];
   if(meta['板块'])$('#c_板块').value=meta['板块'];
 
   _mergeStateV7=m;
@@ -2367,11 +2373,18 @@ async function v7ExtractSingle(file){
     contractReview();
     return;
   }
-  var meta=factsRes.rawAI||{};
-  if(meta['账期'])$('#c_账期').value=meta['账期'];
-  if(meta['开票条款'])$('#c_开票条款').value=meta['开票条款'];
-  if(meta['月份'])$('#c_月份').value=meta['月份'];
+  // V7.1 fix: 用 normalized facts（英文键已映射）回填表单，而非 rawAI 里不存在的中文键
+  var nf=factsRes.normalized||{};
+  if(nf.contractNumber) $('#c_合同编号').value=nf.contractNumber;
+  if(nf.contractDate){ var cd=String(nf.contractDate||''); if(cd.length>=7) $('#c_月份').value=cd.slice(0,7); }
+  else if(meta['月份'])$('#c_月份').value=meta['月份']; // 兼容旧 meta
+  if(nf.paymentTerms) $('#c_账期').value=nf.paymentTerms;
+  else if(meta['账期'])$('#c_账期').value=meta['账期'];
+  if(nf.invoiceTerms) $('#c_开票条款').value=nf.invoiceTerms;
+  else if(meta['开票条款'])$('#c_开票条款').value=meta['开票条款'];
   if(meta['板块'])$('#c_板块').value=meta['板块'];
+  // 自动选归属公司（我方主体）
+  if(a.myCompany){ var sel=$('#c_归属公司'); if(sel) for(var i=0;i<sel.options.length;i++){ var v=sel.options[i].value; if(v && (a.myCompany.indexOf(v)>=0 || v.indexOf(a.myCompany)>=0)){ sel.selectedIndex=i; break; }}}
   contractReview();
   say('✓ 已识别：'+(a.relationship==='seller'?'上游销售':'下游采购')+' · '+a.counterparty+' · ¥'+a.amount,'var(--ok)');
   toast('AI 已抽取合同事实');
