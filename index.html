@@ -197,6 +197,7 @@
 
   /* ===== 对手方卡片 ===== */
   .party-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+  #compareGrid{grid-template-columns:repeat(3,1fr)}
   .party-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow-sm);transition:all .2s}
   .party-card:hover{box-shadow:var(--shadow)}
   .party-card h3{margin:0 0 5px;font-size:14px;font-weight:700}
@@ -456,6 +457,7 @@
     .logo{height:30px}
     .logo img{max-width:110px}
     .party-grid{grid-template-columns:1fr}
+    #compareGrid{grid-template-columns:repeat(2,1fr)}
     .grid2{grid-template-columns:1fr}
     body{font-size:14px}
     .sec-head h2{font-size:15px}
