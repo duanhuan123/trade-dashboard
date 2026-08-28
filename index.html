@@ -2258,7 +2258,14 @@ function doMergeV7(){
   else if(meta['账期'])$('#c_账期').value=meta['账期'];
   if(nf.invoiceTerms) $('#c_开票条款').value=nf.invoiceTerms;
   else if(meta['开票条款'])$('#c_开票条款').value=meta['开票条款'];
-  if(meta['板块'])$('#c_板块').value=meta['板块'];
+
+  // 回填归属公司（从 A/B analysis 的 myCompany 匹配下拉选项）
+  var dualAnalysis=(A&&A.analysis)||(B&&B.analysis)||null;
+  if(dualAnalysis && dualAnalysis.myCompany){ var sel=$('#c_归属公司'); if(sel) for(var i=0;i<sel.options.length;i++){ var v=sel.options[i].value; if(v && (dualAnalysis.myCompany.indexOf(v)>=0 || v.indexOf(dualAnalysis.myCompany)>=0)){ sel.selectedIndex=i; break; }}}
+  // 板块：从已选归属公司反推（同归属公司名即板块名），兜底保留 meta['板块']
+  var coSel=$('#c_归属公司'); var coVal=coSel?coSel.value:'';
+  if(coVal) $('#c_板块').value=coVal;
+  else if(meta['板块'])$('#c_板块').value=meta['板块'];
 
   _mergeStateV7=m;
   renderMergeV7(m, sides, A, B);
@@ -2382,9 +2389,12 @@ async function v7ExtractSingle(file){
   else if(meta['账期'])$('#c_账期').value=meta['账期'];
   if(nf.invoiceTerms) $('#c_开票条款').value=nf.invoiceTerms;
   else if(meta['开票条款'])$('#c_开票条款').value=meta['开票条款'];
-  if(meta['板块'])$('#c_板块').value=meta['板块'];
-  // 自动选归属公司（我方主体）
+  // 自动选归属公司（我方主体）—— 必须先于板块，因为板块从归属公司反推
   if(a.myCompany){ var sel=$('#c_归属公司'); if(sel) for(var i=0;i<sel.options.length;i++){ var v=sel.options[i].value; if(v && (a.myCompany.indexOf(v)>=0 || v.indexOf(a.myCompany)>=0)){ sel.selectedIndex=i; break; }}}
+  // 板块：从已选归属公司反推，兜底 meta['板块']
+  var coSel2=$('#c_归属公司'); var coVal2=coSel2?coSel2.value:'';
+  if(coVal2) $('#c_板块').value=coVal2;
+  else if(meta['板块'])$('#c_板块').value=meta['板块'];
   contractReview();
   say('✓ 已识别：'+(a.relationship==='seller'?'上游销售':'下游采购')+' · '+a.counterparty+' · ¥'+a.amount,'var(--ok)');
   toast('AI 已抽取合同事实');
