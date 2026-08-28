@@ -7,7 +7,7 @@
 <meta http-equiv="Expires" content="0">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>宽东方贸易经营看板 · v5.0 · v3.2 (Supabase)</title>
+<title>宽东方贸易经营看板 · V7.1 (Supabase)</title>
 <!-- 缓存杀手：版本号内嵌在 URL 参数中，每次升级必改此值 -->
 <script>
 (function(){
@@ -1760,6 +1760,8 @@ async function aiExtractEdge(kind, file, fields, mapIds, api){
       const b64=await fileToB64(file); body={kind, mode:'vision', images:[b64.split(',')[1]]};
     } else if(low.match(/\.(txt|csv|md)$/)){
       const text=await file.text(); body={kind, mode:'text', text};
+    } else if(low.match(/\.(docx?|xls|xlsx)$/)){
+      const b64=await fileToB64(file); body={kind, mode:'office', filename:file.name, data:b64.split(',')[1]};
     } else {
       const b64=await fileToB64(file); body={kind, mode:'raw', filename:file.name, data:b64.split(',')[1]};
     }
