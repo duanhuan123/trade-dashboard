@@ -1343,7 +1343,7 @@ function contractRecord(){
   if(atts.length) storageHeadsUp();
   const rec={ id:'r'+Date.now(), 归属公司:($('#c_归属公司').value||currentCompanyDefault()), 板块:($('#ingestBlock').value||$('#c_板块').value||blocksList()[0]||'未分类'), 月份:(c.ym||'')+'-01', 上游公司:c.up, 下游公司:c.down,
     上游应收金额:c.upAmt, 上游已走金额:0, 下游应付金额:c.downAmt, 下游已走金额:0,
-    上游开票金额:'', 下游开票金额:'', 税金:num($('#c_税金').value)||'', 流量费:num(.value)||'', 合同编号:($('#c_合同编号').value.trim()||autoContractNo(c.ym||$('#c_月份').value)), 交易情况:'欠款', 备注:'合同入账·'+($('#c_账期').value.trim()||'—'), 来源:'合同', 附件:atts };
+    上游开票金额:'', 下游开票金额:'', 税金:num($('#c_税金').value)||'', 流量费:num($('#c_流量费').value)||'', 合同编号:($('#c_合同编号').value.trim()||autoContractNo(c.ym||$('#c_月份').value)), 交易情况:'欠款', 备注:'合同入账·'+($('#c_账期').value.trim()||'—'), 来源:'合同', 附件:atts };
   records.push(rec); save(); renderAll();
   toast('已入台账：'+c.up+'，毛利 '+fmt(c.profit)+'，进入催款队列'+(atts.length?'，合同已保存':'') );
   ['c_上游公司','c_下游公司','c_上游应收金额','c_下游应付金额','c_流量费','c_税金','c_账期','c_开票条款','c_月份'].forEach(id=>$('#'+id).value='');
