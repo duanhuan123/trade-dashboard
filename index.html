@@ -466,7 +466,7 @@
 <header class="top">
   <div class="top-inner">
     <div class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8"/></svg></div>
-    <div class="title-block"><h1>宽东方贸易经营看板 · v3</h1><p id="subtitle">多板块贸易经营 | 合同审核 · 流水匹配 · 发票核对</p></div>
+    <div class="title-block"><h1>宽东方贸易经营看板 · V7.1</h1><p id="subtitle">多板块贸易经营 | 合同审核 · 流水匹配 · 发票核对</p></div>
     <div class="top-actions">
       <button class="ingest-entry-btn" id="btnGoIngest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>录入中心</button>
       <button class="btn ghost" id="btnExport" title="导出 JSON 备份"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>导出</button>
@@ -1336,6 +1336,8 @@ function contractReview(){
 }
 function autoContractNo(ym){ ym=(ym||'').replace(/[^0-9]/g,'').slice(0,6); if(!ym) return ''; let max=0; records.forEach(r=>{ const m=/^HT(\d{6})(\d{3})$/.exec((r.合同编号||'').trim()); if(m&&m[1]===ym) max=Math.max(max,+m[2]); }); return 'HT'+ym+('00'+(max+1)).slice(-3); }
 function contractRecord(){
+  console.log('[contractRecord] called');
+  try {
   const c=contractReview(); if(!c.allOk){ toast('审核未通过，请补全必填项'); return; }
   const atts=pendingContractFile?[pendingContractFile]:[];
   if(atts.length) storageHeadsUp();
@@ -1346,6 +1348,7 @@ function contractRecord(){
   toast('已入台账：'+c.up+'，毛利 '+fmt(c.profit)+'，进入催款队列'+(atts.length?'，合同已保存':'') );
   ['c_上游公司','c_下游公司','c_上游应收金额','c_下游应付金额','c_流量费','c_税金','c_账期','c_开票条款','c_月份'].forEach(id=>$('#'+id).value='');
   pendingContractFile=null; renderContractFileHint(); contractReview();
+  } catch(e) { console.error('[contractRecord] error:', e); toast('入账失败：'+e.message); }
 }
 $('#c_上游公司').oninput=contractReview; $('#c_下游公司').oninput=contractReview; $('#c_板块').oninput=contractReview; $('#c_上游应收金额').oninput=contractReview;
 $('#c_下游应付金额').oninput=contractReview; $('#c_流量费').oninput=contractReview; $('#c_税金').oninput=contractReview;
