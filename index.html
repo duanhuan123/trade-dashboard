@@ -1381,15 +1381,22 @@ function parseAmt(s){ if(s==null) return 0; let t=String(s).trim().replace(/[¥�
   let neg=false; if(/^\(.*\)$/.test(t)){ neg=true; t=t.slice(1,-1); } if(t.startsWith('-')) neg=true;
   t=t.replace(/[^0-9.]/g,''); const v=parseFloat(t)||0; return neg?-v:v; }
 function pad(n){ return String(n).padStart(2,'0'); }
+/* 检测一列是否看起来像账号/卡号（纯数字、长度10-25位、高唯一性 → 几乎肯定是账号） */
+function looksLikeAccountCol(data, j){
+  let total=0, acctLike=0;
+  for(const r of data){ const c=(r[j]||'').trim(); if(c==='') continue; total++;
+    if(/^\d{10,25}$/.test(c)) acctLike++; }
+  return total>0 && acctLike/total>0.8;
+}
 function colStats(data, j){
-  let nonempty=0, dates=0, nums=0, distinct=new Set(), neg=0;
+  let nonempty=0, dates=0, nums=0, distinct=new Set(), neg=0, isAcct=looksLikeAccountCol(data,j);
   for(const r of data){ const c=(r[j]||'').trim(); if(c==='')continue; nonempty++;
     if(normDate(c)) dates++;
     const clean=c.replace(/[¥￥,\s]/g,''); const isNum=/^\(.*\)$/.test(c) || /^-?[\d.,]+$/.test(clean);
     if(isNum){ nums++; const a=parseAmt(c); if(a<0) neg++; }
     distinct.add(c); }
   return {n:data.length, nonempty, dateRate: nonempty?dates/nonempty:0, numRate: nonempty?nums/nonempty:0,
-    cardinality: nonempty?distinct.size/nonempty:0, distinct: distinct.size, allPos: neg===0};
+    cardinality: nonempty?distinct.size/nonempty:0, distinct: distinct.size, allPos: neg===0, isAcct};
 }
 /* 数据驱动识别：不写死列位置，按列内数据特征推断角色，适配不同银行版式 */
 function detectHeaderAndMap(rows){
@@ -1400,29 +1407,32 @@ function detectHeaderAndMap(rows){
   const hdr=rows[best].map(c=>(c||'').trim());
   const data=rows.slice(best+1);
   const J=hdr.length; const st=[]; for(let j=0;j<J;j++) st.push(colStats(data,j));
-  const findKw=ks=>{ for(let j=0;j<J;j++){ if(ks.some(k=>hdr[j].includes(k))) return j; } return null; };
-  // 日期：可解析为日期的比例最高
-  let date=null,dr=-1; for(let j=0;j<J;j++){ if(st[j].dateRate>dr){dr=st[j].dateRate;date=j;} } if(dr<0.5) date=null;
+  /* 标记账号列（纯数字10-25位），后续所有角色选择都跳过 */
+  const acctCols=new Set(); for(let j=0;j<J;j++) if(st[j].isAcct) acctCols.add(j);
+  const findKw=ks=>{ for(let j=0;j<J;j++){ if(acctCols.has(j)) continue; if(ks.some(k=>hdr[j].includes(k))) return j; } return null; };
+  // 日期：可解析为日期的比例最高（排除账号列）
+  let date=null,dr=-1; for(let j=0;j<J;j++){ if(acctCols.has(j)) continue; if(st[j].dateRate>dr){dr=st[j].dateRate;date=j;} } if(dr<0.5) date=null;
   const debit=findKw(['借方','借记']), credit=findKw(['贷方','贷记']), income=findKw(['收入']), expense=findKw(['支出']);
-  let dir=null; for(let j=0;j<J;j++){ if(/(方向|收付款方向|^收$|^付$|^借$|^贷$)/.test(hdr[j]) && j!==debit && j!==credit){ dir=j; break; } }
-  // 金额：数值列、非余额/账号，优先带"金额/发生额"表头且含正负
+  let dir=null; for(let j=0;j<J;j++){ if(acctCols.has(j)) continue; if(/(方向|收付款方向|^收$|^付$|^借$|^贷$)/.test(hdr[j]) && j!==debit && j!==credit){ dir=j; break; } }
+  // 金额：数值列、非余额/账号/账号列，优先带"金额/发生额"表头且含正负
   let amt=null,ascore=-1; for(let j=0;j<J;j++){ if(j===debit||j===credit||j===income||j===expense) continue;
+    if(acctCols.has(j)) continue;
     if(/余额|账户|账号/.test(hdr[j])) continue; if(st[j].numRate<0.6) continue;
     let sc=st[j].numRate; if(/金额|发生额|交易金额|交易额/.test(hdr[j])) sc+=0.5; if(!st[j].allPos) sc+=0.3; if(sc>ascore){ascore=sc;amt=j;} }
-  // 对方户名：含名称类关键字、排除"账号/本方/我方"列，再取列内不同值最多的（你公司名恒定→不选中，对手名多变→自动选中）
+  // 对方户名：含名称类关键字、排除"账号/本方/我方"列和账号列，再取列内不同值最多的
   const selfHint=/账号名称|本方|账户名称|我方|自身|本公司/;
   const nameKw=/对方|交易对手|户名|收款人|付款人|名称|客户|供应商|收付款方|收方|付方/;
-  const nameCands=[]; for(let j=0;j<J;j++){ if(nameKw.test(hdr[j]) && !selfHint.test(hdr[j])) nameCands.push(j); }
+  const nameCands=[]; for(let j=0;j<J;j++){ if(acctCols.has(j)) continue; if(nameKw.test(hdr[j]) && !selfHint.test(hdr[j])) nameCands.push(j); }
   let name=null; if(nameCands.length){ let bc=-1; for(const j of nameCands){ if(st[j].cardinality>bc){bc=st[j].cardinality;name=j;} } }
-  else { let bc=-1; for(let j=0;j<J;j++){ if(st[j].numRate>0.5) continue; const cv=st[j].cardinality*0.8; if(cv>bc){bc=cv;name=j;} } }
+  else { let bc=-1; for(let j=0;j<J;j++){ if(acctCols.has(j)) continue; if(st[j].numRate>0.5) continue; const cv=st[j].cardinality*0.8; if(cv>bc){bc=cv;name=j;} } }
   const summary=findKw(['摘要','用途','附言','备注','说明','业务摘要']);
   const map={date,name,amt,debit,credit,income,expense,dir,summary};
   let dirMode='auto';
   if(debit!=null && credit!=null) dirMode='bank';
   else if(income!=null && expense!=null) dirMode='bank';
   else if(amt!=null) dirMode=dir!=null?'auto':'sign';
-  const conf=(date!=null?1:0)+(name!=null?1:0)+(amt!=null||(debit!=null&&credit!=null)?1:0)+(summary!=null?0.5:0);
-  return {headerIdx:best, map, dirMode, conf};
+  const conf=(date!=null?1:0)+(name!=null?1:0)+(amt!=null||(debit!=null&&credit!=null)?1:0)+(summary!=null?0.5:0)-(acctCols.size>0?0.3:0);
+  return {headerIdx:best, map, dirMode, conf, hasAcctCols: acctCols.size>0};
 }
 function guessMapByPos(cols){ const n=cols.length; if(n>=4) return {date:0,name:1,amt:2,dir:3}; if(n>=3) return {date:0,name:1,amt:2}; return {date:0,amt:1}; }
 function describeMap(map){ const p=[]; if(map.date!=null)p.push('日期'); if(map.name!=null)p.push('对方户名'); if(map.amt!=null)p.push('金额'); if(map.debit!=null&&map.credit!=null)p.push('借/贷'); if(map.income!=null&&map.expense!=null)p.push('收/支'); if(map.dir!=null)p.push('方向'); if(map.summary!=null)p.push('摘要'); return p.join('·')||'单列'; }
@@ -1581,7 +1591,13 @@ async function loadFlowFile(file){
     if(!rows||!rows.length){ toast('文件无数据'); return; }
     const det=detectHeaderAndMap(rows);
     window._flowFileRows=rows; window._flowFileMap=det.map; window._flowFileHeader=det.headerIdx; window._flowFileDirMode=det.dirMode;
-    const fi=$('#flowFileInfo'); fi.style.display=''; fi.textContent='已读取 '+rows.length+' 行 · 规则识别列：'+(describeMap(det.map))+' · 方向模式：'+(det.dirMode==='bank'?'借/贷':det.dirMode==='sign'?'金额正负':'自动');
+    const fi=$('#flowFileInfo'); fi.style.display='';
+    let info='已读取 '+rows.length+' 行 · 规则识别列：'+(describeMap(det.map))+' · 方向模式：'+(det.dirMode==='bank'?'借/贷':det.dirMode==='sign'?'金额正负':'自动');
+    if(det.hasAcctCols) info+=' ⚠️ 检测到账号列（已自动排除，若识别仍不准请用下方列映射校正）';
+    else if(det.conf<2) info+=' ⚠️ 识别置信度较低，建议用下方列映射校正';
+    fi.textContent=info;
+    if(det.hasAcctCols || det.conf<2) fi.style.color='var(--warn)';
+    else fi.style.color='';
     const radio=document.querySelector('input[name="flowdir"][value="'+(det.dirMode==='bank'?'bank':det.dirMode==='sign'?'sign':'auto')+'"]'); if(radio) radio.checked=true;
     $('#flowDirToggle').style.display='';
     renderFlowColMap();
