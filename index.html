@@ -596,7 +596,6 @@
         <input type="file" id="flowFile" accept=".xlsx,.xls,.csv,.txt,.json" style="display:none"></div>
       <div id="flowFileInfo" class="note" style="margin:0 0 12px;display:none"></div>
       <div id="flowAiStatus" class="note" style="margin:0 0 12px;display:none"></div>
-      <button class="btn ghost" id="flowLoadClean" style="margin:0 0 10px">📂 一键载入已整理流水（trade_flow_clean.csv）</button>
       <div id="flowColMap" style="display:none"></div>
       <details class="flow-adv"><summary>或粘贴文本（CSV / 制表符 / 逗号分隔）</summary>
         <div class="fld" style="margin-top:12px"><label>粘贴银行流水</label>
@@ -1757,23 +1756,6 @@ if(fd){ fd.onclick=()=>$('#flowFile').click();
   fd.addEventListener('dragleave',()=>fd.classList.remove('drag'));
   fd.addEventListener('drop',e=>{e.preventDefault();fd.classList.remove('drag'); const f=e.dataTransfer.files[0]; if(f) loadFlowFile(f);}); }
 $('#flowFile').onchange=e=>{ const f=e.target.files[0]; if(f) loadFlowFile(f); e.target.value=''; };
-/* 一键载入已整理流水：直接拉取同仓库的 trade_flow_clean.csv，复用规则引擎管线（无需 AI 后端） */
-$('#flowLoadClean').onclick=()=>{ (async()=>{ try{
-  const resp=await fetch('trade_flow_clean.csv', {cache:'no-store'});
-  if(!resp.ok) throw new Error('HTTP '+resp.status);
-  const text=await resp.text();
-  const rows=csvToRows(text);
-  if(!rows||!rows.length) throw new Error('文件无数据');
-  const det=detectHeaderAndMap(rows);
-  window._flowFileRows=rows; window._flowFileMap=det.map; window._flowFileHeader=det.headerIdx; window._flowFileDirMode=det.dirMode;
-  const fi=$('#flowFileInfo'); fi.style.display='';
-  let info='已读取 '+rows.length+' 行 · 规则识别列：'+(describeMap(det.map))+' · 方向模式：'+(det.dirMode==='bank'?'借/贷':det.dirMode==='sign'?'金额正负':'自动');
-  if(det.hasAcctCols) info+=' ⚠️ 检测到账号列（已自动排除）'; else if(det.conf<2) info+=' ⚠️ 识别置信度较低，建议用下方列映射校正';
-  fi.textContent=info; fi.style.color=(det.hasAcctCols||det.conf<2)?'var(--warn)':'';
-  const radio=document.querySelector('input[name="flowdir"][value="'+(det.dirMode==='bank'?'bank':det.dirMode==='sign'?'sign':'auto')+'"]'); if(radio) radio.checked=true;
-  $('#flowDirToggle').style.display=''; renderFlowColMap(); runFlowParse();
-  toast('已载入 trade_flow_clean.csv，正在匹配台账');
-}catch(e){ console.error(e); toast('载入失败：'+(e&&e.message||e)+'（可改用手动上传/拖入）'); } })(); };
 
 /* ---------- 智能录入：发票核对 ---------- */
 function matchInvoice(){
