@@ -1423,10 +1423,18 @@ function detectHeaderAndMap(rows){
     let sc=st[j].numRate; if(/金额|发生额|交易金额|交易额/.test(hdr[j])) sc+=0.5; if(!st[j].allPos) sc+=0.3; if(sc>ascore){ascore=sc;amt=j;} }
   // 对方户名：含名称类关键字、排除"账号/本方/我方"列和账号列，再取列内不同值最多的
   const selfHint=/账号名称|本方|账户名称|我方|自身|本公司/;
-  const nameKw=/对方|交易对手|户名|收款人|付款人|名称|客户|供应商|收付款方|收方|付方/;
-  const nameCands=[]; for(let j=0;j<J;j++){ if(acctCols.has(j)) continue; if(nameKw.test(hdr[j]) && !selfHint.test(hdr[j])) nameCands.push(j); }
+  const nameKw=/对方|对手方|交易对手|户名|收款人|付款人|名称|客户|供应商|收付款方|收方|付方/;
+  const serialHint=/流水号|交易流水|编号|账号|序列号|序列|ID|流水|号$/;
+  const nameCands=[]; for(let j=0;j<J;j++){ if(acctCols.has(j)) continue; if(serialHint.test(hdr[j])) continue; if(nameKw.test(hdr[j]) && !selfHint.test(hdr[j])) nameCands.push(j); }
   let name=null; if(nameCands.length){ let bc=-1; for(const j of nameCands){ if(st[j].cardinality>bc){bc=st[j].cardinality;name=j;} } }
-  else { let bc=-1; for(let j=0;j<J;j++){ if(acctCols.has(j)) continue; if(st[j].numRate>0.5) continue; const cv=st[j].cardinality*0.8; if(cv>bc){bc=cv;name=j;} } }
+  else {
+    // 回退：在"看起来像公司名"的非数值列里挑（排除流水号/编号等序列列），优先含公司特征字
+    const coHint=/公司|厂|集团|科技|有限|企业|银行|供应链|物流|电气|新能源|材料|贸易|合伙|研究所|局|店|中心/;
+    let bc=-1; for(let j=0;j<J;j++){ if(acctCols.has(j)) continue; if(st[j].numRate>0.5) continue; if(serialHint.test(hdr[j])) continue;
+      const coRate=(data.filter(r=>coHint.test((r[j]||'').replace(/\s/g,''))).length)/Math.max(1,data.length);
+      if(coRate<0.3) continue; // 公司名特征不足，跳过（避免误选流水号/备注类列）
+      const cv=st[j].cardinality*0.8+coRate; if(cv>bc){bc=cv;name=j;} }
+  }
   const summary=findKw(['摘要','用途','附言','备注','说明','业务摘要']);
   const map={date,name,amt,debit,credit,income,expense,dir,summary};
   let dirMode='auto';
